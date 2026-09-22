@@ -9,6 +9,15 @@ All notable changes to SassyTalkie. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com); versions map to Android
 `versionName` (versionCode in parentheses).
 
+## [3.2.5] (81) - 2026-08-17
+
+### Changed
+- **Rebuilt both arm64-v8a and x86_64 native libs** from current Rust source
+  (`cargo ndk`) so the shipping `.so` files match the floor-arbitration /
+  `ptt_frames` consolidation already in tree. VersionCode 81 / versionName
+  3.2.5 — no app Kotlin feature delta beyond the native rebuild (verified from
+  the release commit).
+
 ## [3.2.4] (80) - 2026-08-17
 
 ### Changed
