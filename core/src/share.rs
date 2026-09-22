@@ -87,6 +87,36 @@ pub fn decrypt_share_blob(blob: &[u8], key_b64url: &str) -> Result<String, Strin
     String::from_utf8(plaintext).map_err(|_| "Decrypted payload is not valid UTF-8".to_string())
 }
 
+/// Seal session-QR JSON into a share blob. Inverse of [`decrypt_share_blob`].
+///
+/// Returns `(blob, key_b64url)` where `blob` is `IV(12) ‖ ciphertext+tag` and
+/// `key_b64url` is the 32-byte key as url-safe base64 with no padding — the
+/// fragment an invite link carries. The key is random; callers must put it in
+/// the URL and nowhere else (the relay stores only `blob`).
+///
+/// iOS hosts mint invites through this so the bytes Android's JCA encrypter
+/// produces stay interchangeable. Do not reimplement AES-GCM in Swift.
+pub fn encrypt_share_blob(json: &str) -> Result<(Vec<u8>, String), String> {
+    use rand::RngCore;
+    if json.is_empty() {
+        return Err("Empty session payload".to_string());
+    }
+    let mut key = Zeroizing::new([0u8; 32]);
+    let mut iv = [0u8; IV_LEN];
+    rand::thread_rng().fill_bytes(key.as_mut());
+    rand::thread_rng().fill_bytes(&mut iv);
+
+    let cipher = Aes256Gcm::new(Key::<Aes256Gcm>::from_slice(key.as_slice()));
+    let ct = cipher
+        .encrypt(Nonce::from_slice(&iv), json.as_bytes())
+        .map_err(|_| "Encrypt failed".to_string())?;
+    let mut blob = Vec::with_capacity(IV_LEN + ct.len());
+    blob.extend_from_slice(&iv);
+    blob.extend_from_slice(&ct);
+    let key_b64url = base64::engine::general_purpose::URL_SAFE_NO_PAD.encode(key.as_slice());
+    Ok((blob, key_b64url))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -114,6 +144,19 @@ mod tests {
         let json = r#"{"session_id":"abc","channel":1,"key":"deadbeef"}"#;
         let (blob, key_b64url) = seal(json.as_bytes(), &key, &iv);
         assert_eq!(decrypt_share_blob(&blob, &key_b64url).unwrap(), json);
+    }
+
+    #[test]
+    fn public_encrypt_round_trips_through_decrypt() {
+        let json = r#"{"session_id":"room-1","channel":2,"key":"abcd"}"#;
+        let (blob, key_b64url) = encrypt_share_blob(json).unwrap();
+        assert!(blob.len() > IV_LEN + TAG_LEN);
+        assert_eq!(decrypt_share_blob(&blob, &key_b64url).unwrap(), json);
+    }
+
+    #[test]
+    fn public_encrypt_rejects_empty() {
+        assert!(encrypt_share_blob("").is_err());
     }
 
     #[test]
