@@ -1,6 +1,10 @@
 # Copyright (c) 2026 Shane Smith / Sassy Consulting LLC. All rights reserved.
 # Proprietary source. This notice is Copyright Management Information (17 U.S.C. 1202); removal or alteration prohibited.
 # CodeMark: SCLLC1-sassytalkie-EMHOZXQ6CCCS
+#
+# cloudflare-worker/public/ is marketing/checkout HTML for local reference only.
+# This worker does NOT serve it — do not add an [assets] binding.
+#
 name = "sassytalk-relay"
 # account_id supplied via CLOUDFLARE_ACCOUNT_ID env var (or wrangler oauth
 # profile). Removed from the committed file so the same wrangler.toml works
