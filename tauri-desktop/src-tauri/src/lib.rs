@@ -501,6 +501,11 @@ impl AppState {
         self.current_channel.load(Ordering::Relaxed)
     }
 
+    /// True while the RX loop is decoding inbound audio.
+    pub fn is_receiving(&self) -> bool {
+        self.is_receiving.load(Ordering::Relaxed)
+    }
+
     /// Set channel (clamped to valid range 1-16)
     pub async fn set_channel(&self, channel: u8) {
         let channel = channel.clamp(1, 16);

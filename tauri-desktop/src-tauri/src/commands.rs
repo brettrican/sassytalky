@@ -159,6 +159,7 @@ pub struct AppStatus {
     pub channel: u8,
     pub peer_count: usize,
     pub is_transmitting: bool,
+    pub is_receiving: bool,
 }
 
 /// Get application status
@@ -168,12 +169,14 @@ pub async fn get_status(state: State<'_, Arc<AppState>>) -> Result<AppStatus, St
     let channel = state.get_channel();
     let peers = state.get_nearby_devices().await;
     let peer_count = peers.len();
+    let is_receiving = state.is_receiving();
 
     Ok(AppStatus {
         connection_status,
         channel,
         peer_count,
         is_transmitting: matches!(connection_status, ConnectionStatus::Transmitting),
+        is_receiving,
     })
 }
 

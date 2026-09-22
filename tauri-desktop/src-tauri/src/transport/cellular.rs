@@ -43,6 +43,8 @@ use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use futures_util::{SinkExt, StreamExt};
 use tokio_tungstenite::{connect_async_tls_with_config, Connector};
+use tokio_tungstenite::tungstenite::client::IntoClientRequest;
+use tokio_tungstenite::tungstenite::http::header::{AUTHORIZATION, HeaderValue};
 use tokio_tungstenite::tungstenite::{Error as WsError, Message};
 use tracing::{debug, info, warn};
 
@@ -144,6 +146,9 @@ pub struct CellularTransport {
     packets_sent: AtomicU32,
     packets_received: AtomicU32,
 
+    /// After the first successful dial, reconnects request ?catchup=1.
+    has_completed_handshake: AtomicBool,
+
     control: ControlPlane,
 }
 
@@ -172,6 +177,7 @@ impl CellularTransport {
             heartbeat_seq: AtomicU32::new(0),
             packets_sent: AtomicU32::new(0),
             packets_received: AtomicU32::new(0),
+            has_completed_handshake: AtomicBool::new(false),
             control,
         })
     }
@@ -250,22 +256,35 @@ impl CellularTransport {
     }
 
     /// Fetch a capability token, then open the authenticated WebSocket.
+    /// Token travels in Authorization (not the query string) so it stays out
+    /// of access logs; ?token= remains accepted by the worker for old clients.
     async fn dial(&self) -> Result<WsStream, DialError> {
         let token = self.fetch_token().await?;
-        let url = format!(
-            "{}/ws?room={}&token={}&device={}&peer={}&client_id={}",
+        let mut url = format!(
+            "{}/ws?room={}&device={}&peer={}&client_id={}",
             RELAY_WS_BASE,
             urlencode(&self.config.room_id),
-            urlencode(&token),
             urlencode(&self.config.device_name),
             urlencode(&self.config.peer_id),
             uuid::Uuid::new_v4(),
+        );
+        if self.has_completed_handshake.load(Ordering::Relaxed) {
+            url.push_str("&catchup=1");
+        }
+        let mut request = url
+            .into_client_request()
+            .map_err(|e| DialError::TerminalAuth(format!("ws request: {e}")))?;
+        let bearer = format!("Bearer {token}");
+        request.headers_mut().insert(
+            AUTHORIZATION,
+            HeaderValue::from_str(&bearer)
+                .map_err(|e| DialError::TerminalAuth(format!("auth header: {e}")))?,
         );
         let tls = super::tls_pinning::client_config()
             .map_err(|e| DialError::TerminalAuth(format!("tls config: {e}")))?;
         let connector = Connector::Rustls(std::sync::Arc::new(tls));
         let (stream, _resp) = connect_async_tls_with_config(
-            url.as_str(),
+            request,
             None,
             false,
             Some(connector),
@@ -277,16 +296,19 @@ impl CellularTransport {
             }
             _ => DialError::Retryable(format!("ws connect failed: {}", e)),
         })?;
+        self.has_completed_handshake.store(true, Ordering::Relaxed);
         Ok(stream)
     }
 
-    /// GET the HMAC token from `/auth?room=` (required when the relay has
-    /// AUTH_SECRET set, which production does).
+    /// GET the HMAC token from `/auth?room=&peer=` (required when the relay has
+    /// AUTH_SECRET set, which production does). peer= is always sent when we
+    /// have a peer id (this client always does).
     async fn fetch_token(&self) -> Result<String, DialError> {
         let auth_url = format!(
-            "{}/auth?room={}",
+            "{}/auth?room={}&peer={}",
             https_base(),
             urlencode(&self.config.room_id),
+            urlencode(&self.config.peer_id),
         );
         let tls = super::tls_pinning::client_config()
             .map_err(|e| DialError::Retryable(format!("tls config: {e}")))?;
