@@ -85,6 +85,19 @@ struct SettingsView: View {
                     diagRow("Connection", viewModel.statusText)
                     diagRow("Transmitting", viewModel.isTransmitting ? "yes" : "no")
                     diagRow("Receiving", viewModel.isReceiving ? "yes" : "no")
+                    diagRow("Paired", viewModel.isPaired ? "yes" : "no")
+                    diagRow("Trial left", "\(TrialStore.sessionsRemaining())")
+                    diagRow("Entitled", viewModel.isEntitled ? "yes" : "no")
+                }
+
+                Section(header: Text("LICENSE")) {
+                    Button("Upgrade / Restore") {
+                        presentationMode.wrappedValue.dismiss()
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
+                            viewModel.showingPaywall = true
+                        }
+                    }
+                    .foregroundColor(.stTeal)
                 }
 
                 Section(header: Text("TECHNICAL AUDIT"),

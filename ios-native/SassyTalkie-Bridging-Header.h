@@ -175,4 +175,26 @@ bool sassytalkie_relay_on_message(const uint8_t* _Nullable ptr, size_t len);
 /// Free a buffer returned by sassytalkie_relay_poll_outbound / _heartbeat_frame.
 void sassytalkie_free_bytes(uint8_t* _Nullable ptr, size_t len);
 
+/// True once a QR/PSK session is installed (mandatory encryption).
+bool sassytalkie_is_paired(void);
+
+/// Floor occupancy (1.5 s stale / 300 ms drain). Never the 400 ms UI LED.
+bool sassytalkie_floor_held(void);
+
+/// UI "peer speaking" LED (400 ms).
+bool sassytalkie_peer_speaking(void);
+
+/// One-shot PTT rejection reason (must free with sassytalkie_free_string), or NULL.
+char* _Nullable sassytalkie_take_ptt_reject(void);
+
+/// Seal session-QR JSON for POST /share. Returns JSON
+/// {"blob_b64":"...","key_b64url":"..."} (free with sassytalkie_free_string), or NULL.
+char* _Nullable sassytalkie_encrypt_share_blob(const char* _Nullable json);
+
+/// JSON array of SPKI SHA-256 pins for the relay host (free with sassytalkie_free_string).
+char* _Nullable sassytalkie_tls_pins_json(void);
+
+/// Production default: pin when the core pin-set has backups.
+bool sassytalkie_tls_pinning_enabled(void);
+
 #endif /* SassyTalkie_Bridging_Header_h */
