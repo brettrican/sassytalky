@@ -137,7 +137,12 @@ fi
 echo "  ✓ versioned APK round-trip"
 
 # 3) update worker env-vars + deploy
-[ -f "$WORKER_CFG" ] || { echo "missing worker config: $WORKER_CFG" >&2; exit 1; }
+[ -f "$WORKER_CFG" ] || {
+  echo "missing worker config: $WORKER_CFG" >&2
+  echo "Expected sibling marketing-site wrangler.jsonc (default path above)." >&2
+  echo "Override with SASSYCONSULTINGLLC_WORKER_DIR=/path/to/sassyconsultingllc-cloudflare" >&2
+  exit 1
+}
 # Use sed in-place to flip the two pinned strings. Pattern matches the
 # committed shape "sassy-talk/android/sassytalkie-vX.Y.Z.{apk,aab}".
 sed -i -E "s|\"LATEST_ANDROID_APK\": \"sassy-talk/android/sassytalkie-v[0-9.]+\\.apk\"|\"LATEST_ANDROID_APK\": \"${APK_KEY}\"|" "$WORKER_CFG"

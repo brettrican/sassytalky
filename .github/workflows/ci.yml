@@ -8,6 +8,7 @@ on:
       - 'android-app/**'
       - 'android-native/**'
       - 'core/**'
+      - 'ios-native/**'
       - 'tauri-desktop/**'
       - 'cloudflare-worker/**'
       - 'scripts/**'
@@ -17,6 +18,7 @@ on:
       - 'android-app/**'
       - 'android-native/**'
       - 'core/**'
+      - 'ios-native/**'
       - 'tauri-desktop/**'
       - 'cloudflare-worker/**'
       - 'scripts/**'
@@ -107,6 +109,10 @@ jobs:
         run: cargo clippy --manifest-path core/Cargo.toml --lib --locked
       - name: Test Android native crate on host
         run: cargo test --manifest-path android-native/Cargo.toml --lib --locked
+      - name: Test iOS native crate on host
+        # Apple SDK deps are cfg-gated; host `cargo test --lib` exercises portable
+        # logic (floor, protocol) without Xcode. Device/sim builds stay on macos.
+        run: cargo test --manifest-path ios-native/Cargo.toml --lib --locked
       - name: Clippy Android native
         # JNI exports necessarily receive raw handles from the VM. They validate
         # and wrap those handles at the boundary; Clippy cannot infer that ABI.
@@ -124,11 +130,34 @@ jobs:
       - name: Check committed JNI shared libraries
         run: |
           set -euo pipefail
+          # Also scan merged native-lib / AAB-extracted .so trees when present
+          # (ML Kit Translate caveat: see android-app/app/build.gradle.kts).
+          # Absence of an AAB in this job is not a failure — only scan what exists.
+          paths=()
           if compgen -G "android-app/app/src/main/jniLibs/*/*.so" > /dev/null; then
-            python3 scripts/check-elf-alignment.py android-app/app/src/main/jniLibs
-          else
-            echo "No committed JNI libs; release workflow still checks after cargo ndk."
+            paths+=(android-app/app/src/main/jniLibs)
           fi
+          for d in \
+            android-app/app/build/intermediates/merged_native_libs/*/out/lib \
+            android-app/app/build/intermediates/merged_native_libs/*/*/out/lib
+          do
+            if compgen -G "$d/*/*.so" > /dev/null 2>&1; then
+              paths+=("$d")
+            fi
+          done
+          for aab in android-app/app/build/outputs/bundle/*/*.aab; do
+            [ -f "$aab" ] || continue
+            tmp=$(mktemp -d)
+            unzip -q -o "$aab" 'base/lib/*/*.so' -d "$tmp" 2>/dev/null || true
+            if compgen -G "$tmp/base/lib/*/*.so" > /dev/null 2>&1; then
+              paths+=("$tmp/base/lib")
+            fi
+          done
+          if [ "${#paths[@]}" -eq 0 ]; then
+            echo "No .so trees to scan; release workflow still checks after cargo ndk."
+            exit 0
+          fi
+          python3 scripts/check-elf-alignment.py "${paths[@]}"
 
   desktop-smoke:
     name: Desktop smoke (${{ matrix.os }})
