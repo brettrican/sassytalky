@@ -90,6 +90,8 @@ class CellularWebSocketClient {
     private val isRunning = AtomicBoolean(false)
     private val isConnecting = AtomicBoolean(false)
     private val reconnectAttempts = AtomicInteger(0)
+    /** True after at least one successful WS open on this client — drives ?catchup=1. */
+    @Volatile private var hasCompletedHandshake = false
     /** Invalidates auth callbacks, sockets, pumps, and reconnect tasks together. */
     private val generation = GenerationOwner()
     // Set by disconnect(), cleared by an explicit connect(). While true, every
@@ -240,6 +242,7 @@ class CellularWebSocketClient {
                 this@CellularWebSocketClient.webSocket = webSocket
                 isConnecting.set(false)
                 isConnected.set(true)
+                hasCompletedHandshake = true
                 reconnectAttempts.set(0)
                 SassyTalkNative.cellularOnConnected()
                 startOutboundPump()
@@ -658,6 +661,12 @@ class CellularWebSocketClient {
                         // /presence row and skip FCM pushes when we're online.
                         peerId?.takeIf { it.isNotBlank() }?.let {
                             builder.setQueryParameter("peer", it)
+                        }
+                        // Reconnect (not the first open of this client): ask the
+                        // DO to replay the retained catchup window. No since=
+                        // cursor — we don't persist one yet; catchup=1 alone is enough.
+                        if (hasCompletedHandshake) {
+                            builder.setQueryParameter("catchup", "1")
                         }
                         val authedUrl = builder.build().toString().let { toWsScheme(it) }
                         onResult(authedUrl, null)
