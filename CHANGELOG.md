@@ -9,6 +9,13 @@ All notable changes to SassyTalkie. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com); versions map to Android
 `versionName` (versionCode in parentheses).
 
+## [3.2.6] (82) - 2026-09-22
+
+### Fixed
+- **Merged audit fixes on main:** presence requests authenticate against the
+  relay, FCM wake payloads accept either field shape, catchup after reconnect,
+  and Play builds no longer redeem relay promo codes.
+
 ## [3.2.5] (81) - 2026-08-17
 
 ### Changed
