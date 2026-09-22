@@ -26,6 +26,7 @@ export interface AppStatus {
   channel: number;
   peer_count: number;
   is_transmitting: boolean;
+  is_receiving: boolean;
 }
 
 export interface DeviceInfo {
