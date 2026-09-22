@@ -9,7 +9,10 @@ async function buyProduct(product) {
             body: JSON.stringify({ product })
         });
         const data = await response.json();
-        if (data.url) window.location.href = data.url;
+        // Worker returns checkout_url; older drafts used url — accept either.
+        const checkoutUrl = data.checkout_url || data.url;
+        if (checkoutUrl) window.location.href = checkoutUrl;
+        else alert('Checkout failed. Please try again.');
     } catch (err) {
         alert('Checkout failed. Please try again.');
     }
