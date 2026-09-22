@@ -187,6 +187,24 @@ jobs:
       - name: Make gradlew executable
         run: chmod +x android-app/gradlew
 
+      - name: Materialize google-services.json for Play FCM
+        env:
+          GOOGLE_SERVICES_JSON: ${{ secrets.GOOGLE_SERVICES_JSON }}
+        run: |
+          set -euo pipefail
+          # Gradle applies the Google Services plugin only if this file exists
+          # (local builds without FCM stay optional). Release CI must have it.
+          if [ -z "${GOOGLE_SERVICES_JSON:-}" ]; then
+            echo "::error::GOOGLE_SERVICES_JSON secret is not set — Play release needs google-services.json for FCM."
+            echo "::error::Add the Firebase google-services.json contents as repo secret GOOGLE_SERVICES_JSON."
+            exit 1
+          fi
+          printf '%s' "$GOOGLE_SERVICES_JSON" > android-app/app/google-services.json
+          test -s android-app/app/google-services.json || {
+            echo "::error::Wrote empty google-services.json"
+            exit 1
+          }
+
       - name: Run Android JVM unit tests
         working-directory: android-app
         run: ./gradlew testPlayDebugUnitTest testDirectDebugUnitTest --stacktrace
