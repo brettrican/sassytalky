@@ -26,7 +26,7 @@ import kotlinx.coroutines.launch
  * Receives wake-pushes from the relay. The relay fires a data-only,
  * priority=HIGH FCM message of the form:
  *
- *   data: { kind: "wake", room: "<room_id>", ts: "<senderMs>" }
+ *   data: { kind|type: "wake", room: "<room_id>", ts|sentAt: "<senderMs>" }
  *
  * Our job:
  *   1. Bring WalkieService into the foreground if it isn't already (relay WS
@@ -119,13 +119,15 @@ class SassyTalkFcmService : FirebaseMessagingService() {
 
     private fun handleWakeMessage(message: RemoteMessage) {
         val data = message.data
-        val kind = data["kind"]
+        // Accept kind (Android historical) or type (older relay) as the wake marker.
+        val kind = data["kind"] ?: data["type"]
         if (kind != "wake") {
             Log.d(TAG, "FCM message kind=$kind — ignoring")
             return
         }
         val room = data["room"] ?: ""
-        Log.i(TAG, "WAKE push received room=$room ts=${data["ts"]}")
+        val wakeTs = data["ts"] ?: data["sentAt"]
+        Log.i(TAG, "WAKE push received room=$room ts=$wakeTs")
 
         // Persist so a cold-started service can act on it.
         wakePrefs()?.edit()
