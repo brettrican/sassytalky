@@ -5,7 +5,7 @@
 -->
 # Privacy Policy for Sassy-Talk (SassyTalkie)
 
-**Last Updated:** January 14, 2025
+**Last Updated:** September 22, 2026
 
 **Effective Date:** January 14, 2025
 
@@ -13,26 +13,29 @@
 
 ## Overview
 
-Sassy-Talk ("the App") is a secure, peer-to-peer Push-to-Talk (PTT) walkie-talkie application developed by Sassy Consulting LLC. We are committed to protecting your privacy. This Privacy Policy explains how we collect, use, and safeguard your information.
+Sassy-Talk ("the App") is a secure Push-to-Talk (PTT) walkie-talkie application developed by Sassy Consulting LLC. Audio is encrypted end-to-end on your device. This Privacy Policy explains what infrastructure the App may contact and what it does not collect.
+
+---
+
+## How communication works
+
+Local Bluetooth / Wi‑Fi multicast paths stay on your LAN and do not contact Sassy Consulting servers. When you use the **cellular relay**, encrypted audio ciphertext is forwarded through a Cloudflare Worker at `relay.sassyconsultingllc.com`. The relay cannot decrypt your audio.
+
+Optional **wake notifications** (Android) may register a Firebase Cloud Messaging (FCM) token with the relay so an offline peer can be woken; the push carries a room id only — never audio. Delivery uses Google FCM.
+
+Paid unlocks use **Google Play Billing** (Play builds) or a **license API** on the relay (direct APK). We do not create user accounts or store conversation recordings.
+
+We do **not**: sell your data, serve ads, access your contacts, or claim there are “no central servers / no third parties” — Cloudflare (relay) and, when enabled, Google (FCM / Play) are involved as described above.
 
 ---
 
 ## Information We DO NOT Collect
 
-**We do not collect, store, or transmit any personal information to our servers.**
-
-Sassy-Talk operates as a **fully peer-to-peer application** with no central servers. Specifically, we do NOT:
-
-- ❌ Collect names, email addresses, or phone numbers
-- ❌ Store conversation history or recordings
-- ❌ Track your location
-- ❌ Access your contacts
-- ❌ Collect analytics or usage data
-- ❌ Share data with third parties
-- ❌ Serve advertisements
-- ❌ Use cookies or tracking technologies
-- ❌ Create user accounts or profiles
-- ❌ Transmit data to external servers
+- Names, email addresses, or phone numbers as account PII (license checkout email, if any, is handled by the payment provider / license flow — not stored as chat identity)
+- Conversation history or voice recordings on our servers
+- Location tracking beyond what Cloudflare connection routing may see as an IP
+- Analytics SDKs or advertising identifiers for marketing
+- Cookies in the native apps
 
 ---
 
