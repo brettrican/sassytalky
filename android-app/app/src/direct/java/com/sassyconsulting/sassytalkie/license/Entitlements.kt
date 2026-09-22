@@ -83,7 +83,8 @@ object Entitlements {
         // Debug builds are always entitled: since the transport gate moved
         // below the UI (AutoConnectManager.autoConnect), a fresh sideloaded
         // debug install with no receipt got ZERO connections — dead radio on
-        // every dev device and emulator. Release builds are unaffected.
+        // every dev device and emulator. Release builds do not take this path
+        // (BuildConfig.DEBUG is false in release).
         if (BuildConfig.DEBUG) return true
         val p = LicenseStore.prefs(context) ?: return false
         val exp = p.getLong(LicenseStore.KEY_RECEIPT_EXP, 0L)
@@ -100,7 +101,8 @@ object Entitlements {
         // bypass. Without this, AppNavigation's silent reconciliation called
         // refresh() a beat after startup, got `false` (no stored license on a
         // dev install), and flipped an already-unlocked debug session onto
-        // the paywall gate.
+        // the paywall gate. Release builds do not take this path
+        // (BuildConfig.DEBUG is false in release).
         if (BuildConfig.DEBUG) return onResult(true)
         val p = LicenseStore.prefs(context) ?: return onResult(false)
         val key = p.getString(LicenseStore.KEY_LICENSE, null) ?: return onResult(false)
