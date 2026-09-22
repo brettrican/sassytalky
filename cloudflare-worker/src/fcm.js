@@ -57,13 +57,18 @@ export async function sendWakePush(env, token, roomId) {
   }
 
   const url = `https://fcm.googleapis.com/v1/projects/${sa.project_id}/messages:send`;
+  const wakeTs = String(Date.now());
   const message = {
     message: {
       token,
       data: {
+        // Dual keys: Android historically required kind/ts; older servers sent
+        // type/sentAt. Send both so any current client matches any current server.
+        kind: "wake",
         type: "wake",
         room: String(roomId),
-        sentAt: String(Date.now()),
+        ts: wakeTs,
+        sentAt: wakeTs,
       },
       android: { priority: "high", ttl: "60s" },
       apns: {

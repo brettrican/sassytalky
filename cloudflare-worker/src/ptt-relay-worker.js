@@ -6,6 +6,9 @@
  *
  * Pure WebSocket relay for encrypted audio. No website, no APIs, no assets.
  * Lives at relay.sassyconsultingllc.com
+ *
+ * cloudflare-worker/public/ is marketing/checkout HTML for local reference only —
+ * it is NOT served by this worker (no [assets] binding; do not add one).
  */
 
 export { PttRoom } from "./ptt-relay.js";
@@ -26,6 +29,7 @@ import {
   isValidPeerId,
   signCapabilityTokenV2,
   verifyIssuanceProof,
+  extractToken,
 } from "./relay-auth.js";
 
 // Token lifetime in seconds. Short enough to limit replay risk, long enough
@@ -82,8 +86,20 @@ export default {
     const wellKnownResp = handleWellKnownRoute(request, env, url);
     if (wellKnownResp) return wellKnownResp;
 
-    // Health check
+    // Health check — 503 when required bindings/secrets are missing so probes
+    // and operators see a misconfigure before clients hit opaque /auth or /ws failures.
     if (path === "/" || path === "/health") {
+      const missing = [];
+      if (!env.AUTH_SECRET) missing.push("AUTH_SECRET");
+      if (!env.SHARES) missing.push("SHARES");
+      if (!env.LICENSES) missing.push("LICENSES");
+      if (missing.length) {
+        return jsonResponse({
+          service: "sassytalk-relay",
+          status: "misconfigured",
+          missing,
+        }, 503);
+      }
       return jsonResponse({
         service: "sassytalk-relay",
         status: "ok",
@@ -174,7 +190,9 @@ export default {
       if (!env.AUTH_SECRET) {
         return new Response("Server misconfigured: AUTH_SECRET unset", { status: 503 });
       }
-      const token = url.searchParams.get("token");
+      // Prefer Authorization / Sec-WebSocket-Protocol (desktop); keep ?token= for
+      // Android/iOS and older clients. extractToken owns the precedence.
+      const token = extractToken(request, url);
       const identity = await verifyCapabilityIdentity(token, roomId, secretsFor(env));
       if (identity.error) {
         return new Response(identity.error, { status: 401 });
