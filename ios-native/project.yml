@@ -26,6 +26,7 @@ settings:
       - "-framework AVFoundation"
       - "-framework CoreBluetooth"
       - "-framework Network"
+      - "-framework StoreKit"
 
 targets:
   SassyTalkie:
@@ -40,8 +41,8 @@ targets:
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.sassyconsulting.sassytalkie
-        MARKETING_VERSION: "3.1.15"
-        CURRENT_PROJECT_VERSION: "67"
+        MARKETING_VERSION: "3.2.4"
+        CURRENT_PROJECT_VERSION: "80"
         CODE_SIGN_STYLE: Automatic
         # Associated Domains (Universal Links for /v/ invite links). The file is
         # hand-maintained like Info.plist; see SassyTalkie.entitlements.

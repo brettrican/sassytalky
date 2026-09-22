@@ -31,6 +31,10 @@ class SassyTalkieViewModel: ObservableObject {
     /// True once a QR session is installed — audio is encrypted (mandatory) and
     /// cross-platform on the paired channel. Until then TX refuses to send.
     @Published var isPaired: Bool = false
+    @Published var isEntitled: Bool = StoreKitEntitlements.isUnlockedCached
+    @Published var showingPaywall: Bool = false
+    @Published var pttRejectText: String? = nil
+    @Published var trialWarning: String? = nil
     
     var version: String {
         let cString = sassytalkie_get_version()
@@ -76,7 +80,8 @@ class SassyTalkieViewModel: ObservableObject {
                 self.showingScanner = false
                 self.statusText = "Paired · ch \(ch)"
                 // Bring up the relay for remote peers (room id was just set by
-                // the import). Local WiFi peers already work via multicast.
+                // the import). Tear down any previous room first.
+                self.relayClient.disconnect()
                 self.relayClient.connect()
             }
         }
@@ -100,7 +105,7 @@ class SassyTalkieViewModel: ObservableObject {
             return
         }
         let isHttps = comps.scheme == "https" && comps.host == Self.relayHost && comps.path.hasPrefix("/v/")
-        let isApp = comps.scheme == "sassytalk" && comps.host == "v"
+        let isApp = ShareLinkClient.isAppScheme(comps.scheme) && comps.host == "v"
         guard isHttps || isApp else {
             DispatchQueue.main.async { self.statusText = "Not a SassyTalk invite link" }
             return
@@ -119,7 +124,7 @@ class SassyTalkieViewModel: ObservableObject {
         guard let fetchURL = URL(string: "\(Self.relayBase)/share/\(id)") else { return }
 
         DispatchQueue.main.async { self.statusText = "Opening invite…" }
-        URLSession.shared.dataTask(with: fetchURL) { [weak self] data, response, error in
+        PinnedURLSession.shared.dataTask(with: fetchURL) { [weak self] data, response, error in
             guard let self = self else { return }
             if let error = error {
                 DispatchQueue.main.async { self.statusText = "Network error: \(error.localizedDescription)" }
@@ -178,7 +183,7 @@ class SassyTalkieViewModel: ObservableObject {
                 self.hostQRJSON = json
                 self.showingHostQR = true
                 self.statusText = "Hosting · ch \(ch)"
-                // Host the relay room too so remote joiners can reach us.
+                self.relayClient.disconnect()
                 self.relayClient.connect()
             }
         }
@@ -224,6 +229,10 @@ class SassyTalkieViewModel: ObservableObject {
         return respB64.withCString { sassytalkie_hybrid_handshake_complete($0) }
     }
 
+    func hybridHandshakeConfirm() -> Bool {
+        return sassytalkie_hybrid_handshake_confirm()
+    }
+
     // MARK: - Private Properties
 
     private let audioManager = AudioManager()
@@ -240,6 +249,8 @@ class SassyTalkieViewModel: ObservableObject {
         if success {
             print("✅ SassyTalkie initialized")
             statusText = "Ready"
+            UpdateReset.runIfNeeded()
+            ManagedConfig.apply()
             
             // Start listening
             _ = sassytalkie_start_listening()
@@ -248,6 +259,10 @@ class SassyTalkieViewModel: ObservableObject {
             
             // Start state polling
             startStatePolling()
+            SassyBluetoothManager.shared.start()
+            StoreKitEntitlements.refresh { [weak self] ok in
+                DispatchQueue.main.async { self?.isEntitled = ok }
+            }
             if let stored = KeychainStore.loadSessionQR(), importSessionQR(stored) > 0 {
                 print("Restored session from Keychain")
             }
@@ -278,6 +293,7 @@ class SassyTalkieViewModel: ObservableObject {
     deinit {
         stateTimer?.invalidate()
         relayClient.disconnect()
+        SassyBluetoothManager.shared.stop()
         sassytalkie_shutdown()
     }
     
@@ -301,9 +317,13 @@ class SassyTalkieViewModel: ObservableObject {
     
     func pttPress() {
         guard !isPTTPressed else { return }
-        
+        guard TrialStore.mayUseRadio(entitled: isEntitled) else {
+            showingPaywall = true
+            return
+        }
+
         isPTTPressed = true
-        
+
         let success = sassytalkie_ptt_press()
         if success {
             do {
@@ -315,6 +335,12 @@ class SassyTalkieViewModel: ObservableObject {
                 _ = sassytalkie_ptt_release()
             }
         } else {
+            if let c = sassytalkie_take_ptt_reject() {
+                defer { sassytalkie_free_string(c) }
+                pttRejectText = String(cString: c)
+            } else {
+                pttRejectText = "Couldn't start PTT"
+            }
             print("❌ Failed to start PTT")
             isPTTPressed = false
         }
@@ -345,10 +371,24 @@ class SassyTalkieViewModel: ObservableObject {
         }
     }
     
+    private static func currentRoomId() -> String? {
+        guard let c = sassytalkie_relay_room_id() else { return nil }
+        defer { sassytalkie_free_string(c) }
+        let s = String(cString: c)
+        return s.isEmpty ? nil : s
+    }
+
     private func updateState() {
         let state = sassytalkie_get_state()
         
         DispatchQueue.main.async {
+            self.isPaired = sassytalkie_is_paired()
+            if TrialStore.shouldWarn(entitled: self.isEntitled) {
+                let left = TrialStore.sessionsRemaining()
+                self.trialWarning = left == 1 ? "Last free session" : "\(left) free sessions left"
+            } else {
+                self.trialWarning = nil
+            }
             switch state {
             case 0: // Idle
                 self.isTransmitting = false
@@ -388,6 +428,9 @@ class SassyTalkieViewModel: ObservableObject {
                 
             default:
                 break
+            }
+            if self.isReceiving, let room = Self.currentRoomId() {
+                TrialStore.noteQualifyingSession(room)
             }
         }
     }

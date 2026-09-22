@@ -179,6 +179,50 @@ impl TransportManager {
         *self.crypto.lock().unwrap() = None;
     }
     
+    /// Send a control envelope that is ALREADY sealed by `ControlAuthCodec`.
+    /// Must not wrap it in the audio AEAD — that would double-encrypt and make
+    /// `classify_inbound` miss `OP_AUTHENTICATED`. Used for PTT_START/STOP and
+    /// hybrid frames on the LAN multicast path (relay uses `enqueue_relay_control`).
+    pub fn send_control_datagram(&self, sealed: &[u8]) -> Result<(), TransportError> {
+        if sealed.is_empty() {
+            return Ok(());
+        }
+        let socket = self.socket.lock().unwrap();
+        if let Some(sock) = socket.as_ref() {
+            sock.send_to(sealed, &self.multicast_addr.into())?;
+        }
+        Ok(())
+    }
+
+    /// Receive one raw UDP datagram with no audio decrypt. The caller runs
+    /// `classify_inbound` first (control plane) then `open_sealed` (audio).
+    pub fn recv_datagram(&self) -> Result<Vec<u8>, TransportError> {
+        let mut raw = vec![0u8; 4096];
+        let socket = self.socket.lock().unwrap();
+        let sock = match socket.as_ref() {
+            Some(s) => s,
+            None => {
+                return Err(TransportError::IoError(std::io::Error::new(
+                    std::io::ErrorKind::NotConnected,
+                    "Socket not initialized",
+                )))
+            }
+        };
+        let buf_uninit: &mut [std::mem::MaybeUninit<u8>] = unsafe {
+            &mut *(raw.as_mut_slice() as *mut [u8] as *mut [std::mem::MaybeUninit<u8>])
+        };
+        match sock.recv_from(buf_uninit) {
+            Ok((size, _)) => {
+                raw.truncate(size);
+                Ok(raw)
+            }
+            Err(ref e) if e.kind() == std::io::ErrorKind::WouldBlock => Err(TransportError::IoError(
+                std::io::Error::new(std::io::ErrorKind::WouldBlock, "No data"),
+            )),
+            Err(e) => Err(TransportError::IoError(e)),
+        }
+    }
+
     /// Start transport
     pub fn start(&self) -> Result<(), TransportError> {
         let socket = Socket::new(Domain::IPV4, Type::DGRAM, Some(Protocol::UDP))?;

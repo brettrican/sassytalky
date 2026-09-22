@@ -21,6 +21,7 @@ struct HostQRView: View {
     let channel: UInt8
 
     @Environment(\.presentationMode) private var presentationMode
+    @State private var linkStatus = ""
 
     var body: some View {
         VStack(spacing: 18) {
@@ -51,6 +52,17 @@ struct HostQRView: View {
                 .font(.caption)
                 .foregroundColor(.stOnline)
 
+            Button(action: copyInvite) {
+                Text("Copy invite link")
+                    .font(.headline)
+                    .foregroundColor(.stTeal)
+            }
+            if !linkStatus.isEmpty {
+                Text(linkStatus)
+                    .font(.caption)
+                    .foregroundColor(.stTextMuted)
+            }
+
             Button(action: { presentationMode.wrappedValue.dismiss() }) {
                 Text("Done")
                     .font(.headline)
@@ -61,6 +73,21 @@ struct HostQRView: View {
         .padding(24)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(Color.stBgDark.ignoresSafeArea())
+    }
+
+    private func copyInvite() {
+        linkStatus = "Minting…"
+        ShareLinkClient.mint(sessionJSON: json) { result in
+            DispatchQueue.main.async {
+                switch result {
+                case .success(let minted):
+                    UIPasteboard.general.string = minted.url
+                    linkStatus = "Copied \(ShareLinkClient.appScheme):// link"
+                case .failure(let err):
+                    linkStatus = err.localizedDescription
+                }
+            }
+        }
     }
 
     /// Render a UTF-8 string into a QR `UIImage` via CoreImage, scaled up with

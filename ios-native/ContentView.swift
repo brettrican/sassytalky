@@ -76,6 +76,9 @@ struct ContentView: View {
                     HostQRView(json: json, channel: viewModel.channel)
                 }
             }
+            .sheet(isPresented: $viewModel.showingPaywall) {
+                PaywallView(viewModel: viewModel)
+            }
         }
     }
     
@@ -128,6 +131,33 @@ struct ContentView: View {
                         .font(.caption)
                 }
                 .foregroundColor(viewModel.isPaired ? .stOnline : .stCoral)
+            }
+
+            if let warning = viewModel.trialWarning {
+                Button(action: { viewModel.showingPaywall = true }) {
+                    HStack {
+                        Text(warning)
+                            .font(.caption)
+                            .foregroundColor(.stTextMuted)
+                        Spacer()
+                        Text("Upgrade")
+                            .font(.caption.weight(.semibold))
+                            .foregroundColor(.stTeal)
+                    }
+                    .padding(10)
+                    .background(RoundedRectangle(cornerRadius: SassyTheme.radiusSm).fill(Color.stBgMedium))
+                }
+            }
+
+            if let reject = viewModel.pttRejectText {
+                Text(reject)
+                    .font(.caption)
+                    .foregroundColor(.stCoral)
+                    .onAppear {
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 2.5) {
+                            viewModel.pttRejectText = nil
+                        }
+                    }
             }
 
             // State indicator
