@@ -14,6 +14,16 @@ All notable changes to SassyTalkie. Format loosely follows
 ### Fixed
 - **Play paywall promo fallback:** restore friends & family promo-code entry on
   the Play gate so a BillingClient disconnect is not a dead end.
+- **Play Billing disconnect handling:** do not treat
+  `onBillingServiceDisconnected` as a fatal catalog failure while
+  `enableAutoServiceReconnection()` is active; Retry still calls
+  `startConnection`. Clarify that BillingClient's own
+  `"Service connection is disconnected."` debugMessage is Play's response
+  (common on sideloaded play-flavor APKs), not an intentional app teardown.
+- **Desktop share-link parity:** accept Android `sassy-talks://` /
+  `sassytalk://` invite pastes (not only https), and fetch `/share/<id>` with
+  the same TLS pin-set as the relay WebSocket. Desktop product version aligned
+  to 3.2.7 for release tracking.
 
 ## [3.2.6] (82) - 2026-09-22
 

@@ -409,10 +409,15 @@ export default function App() {
     setCellularJoining(true);
     try {
       // Accept either a raw QR JSON payload or a one-time invite LINK
-      // (https://relay.sassyconsultingllc.com/v/<id>#<key>). A link is fetched
-      // and decrypted natively (import_share_link → shared core); pasted JSON
-      // joins directly. Tauri v2 camelCases params: Rust `qr_json` -> `qrJson`.
-      const isLink = /^https:\/\/relay\.sassyconsultingllc\.com\/v\//i.test(input);
+      // (https://relay…/v/<id>#<key> or Android's sassy-talks://v/<id>#key).
+      // A link is fetched and decrypted natively (import_share_link → shared
+      // core); pasted JSON joins directly. Tauri v2 camelCases params:
+      // Rust `qr_json` -> `qrJson`.
+      const trimmed = input.trim();
+      const isLink =
+        /^https:\/\/relay\.sassyconsultingllc\.com\/v\//i.test(trimmed) ||
+        /^sassy-talks:\/\/v\//i.test(trimmed) ||
+        /^sassytalk:\/\/v\//i.test(trimmed);
       const room = isLink
         ? await invoke<string>('import_share_link', { url: input })
         : await invoke<string>('join_cellular_session', { qrJson: input });
@@ -799,7 +804,7 @@ export default function App() {
             <>
               <p className="cellular-hint">
                 Join a session over the internet — no Wi-Fi or Bluetooth needed. Paste an
-                invite <strong>link</strong> (https://relay.sassyconsultingllc.com/v/…) or the
+                invite <strong>link</strong> (https://relay…/v/… or sassy-talks://v/…) or the
                 session QR data from the phone app's "Show QR" screen.
               </p>
               <textarea

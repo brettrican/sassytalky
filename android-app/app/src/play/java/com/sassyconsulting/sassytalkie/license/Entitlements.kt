@@ -239,6 +239,23 @@ object Entitlements {
             if (product == null && err != null) error = err
         }
 
+        fun billingDebugHint(debugMessage: String?): String {
+            // Literal from Google's BillingClient (zzdc / BillingResult builder):
+            // "Service connection is disconnected." — not a string we invent.
+            val msg = debugMessage?.trim().orEmpty().ifEmpty { "unknown" }
+            return if (
+                msg.contains("Service connection is disconnected", ignoreCase = true) ||
+                msg.contains("Billing service unavailable", ignoreCase = true)
+            ) {
+                "Google Play Billing is unavailable ($msg). " +
+                    "Play Billing needs the Play Store app and normally an install " +
+                    "from Play (sideloaded play-flavor APKs often cannot keep the " +
+                    "billing service bound). Redeem a promo below, or tap Retry."
+            } else {
+                msg
+            }
+        }
+
         LaunchedEffect(catalogAttempt) {
             if (LicensePromo.hasValidReceipt(appContext)) {
                 // Promo entitlement is receipt-driven (time-limited); do NOT set
@@ -250,7 +267,11 @@ object Entitlements {
             error = null
             details = null
             price = null
-            client.endConnection()
+            // Reset before each attempt (including Retry) so startConnection is
+            // a clean bind. Play's enableAutoServiceReconnection() may also
+            // re-fire onBillingSetupFinished after a transient disconnect —
+            // do NOT treat onBillingServiceDisconnected as a fatal catalog miss.
+            try { client.endConnection() } catch (_: Exception) {}
 
             val timedOut = withTimeoutOrNull(15_000L) {
                 suspendCancellableCoroutine { cont ->
@@ -260,7 +281,7 @@ object Entitlements {
                                 scope.launch(Dispatchers.Main.immediate) {
                                     applyCatalogResult(
                                         null,
-                                        "Google Play unavailable (${result.debugMessage})",
+                                        "Google Play unavailable (${billingDebugHint(result.debugMessage)})",
                                     )
                                 }
                                 if (cont.isActive) cont.resume(Unit)
@@ -303,7 +324,7 @@ object Entitlements {
                                             pr.responseCode != BillingClient.BillingResponseCode.OK ->
                                                 applyCatalogResult(
                                                     null,
-                                                    "Could not load price (${pr.debugMessage})",
+                                                    "Could not load price (${billingDebugHint(pr.debugMessage)})",
                                                 )
                                             list.isEmpty() ->
                                                 applyCatalogResult(
@@ -320,15 +341,12 @@ object Entitlements {
                         }
 
                         override fun onBillingServiceDisconnected() {
-                            if (cont.isActive) {
-                                scope.launch(Dispatchers.Main.immediate) {
-                                    applyCatalogResult(
-                                        null,
-                                        "Lost connection to Google Play — tap Retry",
-                                    )
-                                }
-                                cont.resume(Unit)
-                            }
+                            // BillingClient's own callback (SERVICE_DISCONNECTED path).
+                            // With enableAutoServiceReconnection(), setup may finish
+                            // again; aborting here treated a transient bind drop as
+                            // fatal and blocked Retry's wait window. Timeout still
+                            // covers a permanent disconnect.
+                            Log.w(TAG, "onBillingServiceDisconnected — awaiting auto-reconnect or timeout")
                         }
                     })
                 }
@@ -408,7 +426,7 @@ object Entitlements {
                                 val launch = client.launchBillingFlow(activity, flowParams)
                                 if (launch.responseCode != BillingClient.BillingResponseCode.OK) {
                                     busy = false
-                                    error = "Could not start purchase (${launch.debugMessage})"
+                                    error = "Could not start purchase (${billingDebugHint(launch.debugMessage)})"
                                 }
                             },
                             colors = ButtonDefaults.buttonColors(containerColor = PrimaryBlue),
