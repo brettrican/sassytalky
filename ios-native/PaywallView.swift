@@ -62,11 +62,9 @@ struct PaywallView: View {
             .background(Color.stBgDark.ignoresSafeArea())
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                if TrialStore.mayUseRadio(entitled: viewModel.isEntitled) {
-                    ToolbarItem(placement: .navigationBarLeading) {
-                        Button("Back") { presentationMode.wrappedValue.dismiss() }
-                            .foregroundColor(.stTeal)
-                    }
+                ToolbarItem(placement: .navigationBarLeading) {
+                    Button("Back") { presentationMode.wrappedValue.dismiss() }
+                        .foregroundColor(.stTeal)
                 }
             }
         }
