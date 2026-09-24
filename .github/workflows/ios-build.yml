@@ -66,12 +66,16 @@ jobs:
             -sdk iphonesimulator \
             -configuration Debug \
             -derivedDataPath /tmp/sassytalky-dd \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGNING_ENTITLEMENTS="" \
             build 2>&1 | tail -50
 
       - name: Package simulator .app as zip
         run: |
           cd /tmp/sassytalky-dd/Build/Products/Debug-iphonesimulator
+          ls -la
           zip -r /tmp/SassyTalkie-simulator.zip SassyTalkie.app
+          ls -la /tmp/SassyTalkie-simulator.zip
 
       - name: Upload simulator build artifacts
         uses: actions/upload-artifact@v4
