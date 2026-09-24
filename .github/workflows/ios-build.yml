@@ -81,13 +81,13 @@ jobs:
 
       - name: Build for iOS Device (Release) - skipped (requires iOS DeviceSupport)
         run: |
-          echo "Skipping device build - requires iOS DeviceSupport installation on runner"
-          # xcodebuild -project SassyTalkie.xcodeproj \
-          #   -scheme SassyTalkie \
-          #   -sdk iphoneos \
-          #   -configuration Release \
-          #   -derivedDataPath /tmp/sassytalky-dd \
-          #   build
+          # echo "Skipping device build - requires iOS DeviceSupport installation on runner"
+          xcodebuild -project SassyTalkie.xcodeproj \
+             -scheme SassyTalkie \
+             -sdk iphoneos \
+             -configuration Release \
+             -derivedDataPath /tmp/sassytalky-dd \
+             build
 
       - name: Upload device build artifacts
         uses: actions/upload-artifact@v4
