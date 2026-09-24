@@ -12,6 +12,7 @@
 pub mod audio;
 pub mod bluetooth;
 pub mod codec;
+pub mod floor;
 pub mod state;
 pub mod transport;
 pub mod control;
