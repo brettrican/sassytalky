@@ -66,7 +66,7 @@ jobs:
             -sdk iphonesimulator \
             -configuration Debug \
             -derivedDataPath /tmp/sassytalky-dd \
-            build
+            build 2>&1 | tail -50
 
       - name: Upload simulator build artifacts
         uses: actions/upload-artifact@v4
