@@ -14,5 +14,11 @@
     <array>
         <string>applinks:relay.sassyconsultingllc.com</string>
     </array>
+    <!-- UDP multicast (239.255.42.42:5555) requires Apple's special
+         com.apple.developer.networking.multicast entitlement. Request it from
+         the developer portal before a device build; without the grant, codesign
+         fails and LAN discovery is dead. See remaining ship work. -->
+    <key>com.apple.developer.networking.multicast</key>
+    <true/>
 </dict>
 </plist>

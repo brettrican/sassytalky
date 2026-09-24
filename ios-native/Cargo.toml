@@ -3,7 +3,7 @@
 # CodeMark: SCLLC1-sassytalkie-F2LKNLDHPQHD
 [package]
 name = "sassytalkie-ios"
-version = "1.0.0"
+version = "3.2.7"
 edition = "2021"
 authors = ["Sassy Consulting LLC"]
 license = "Proprietary"

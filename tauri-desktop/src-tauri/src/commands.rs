@@ -159,6 +159,7 @@ pub struct AppStatus {
     pub channel: u8,
     pub peer_count: usize,
     pub is_transmitting: bool,
+    pub is_receiving: bool,
 }
 
 /// Get application status
@@ -168,12 +169,14 @@ pub async fn get_status(state: State<'_, Arc<AppState>>) -> Result<AppStatus, St
     let channel = state.get_channel();
     let peers = state.get_nearby_devices().await;
     let peer_count = peers.len();
+    let is_receiving = state.is_receiving();
 
     Ok(AppStatus {
         connection_status,
         channel,
         peer_count,
         is_transmitting: matches!(connection_status, ConnectionStatus::Transmitting),
+        is_receiving,
     })
 }
 
@@ -397,15 +400,33 @@ pub async fn get_cellular_status(state: State<'_, Arc<AppState>>) -> Result<Stri
 /// Host of the Cloudflare relay. The invite link and the blob fetch are both
 /// pinned to this host so a hostile link can't redirect the fetch elsewhere.
 const RELAY_HOST: &str = "relay.sassyconsultingllc.com";
+/// App deep-link schemes Android mints (`SessionShareLink.APP_SCHEME` /
+/// `LEGACY_APP_SCHEME`). Desktop must accept these or an Android "Copy Link"
+/// paste that prefers the custom scheme fails to join.
+const APP_SHARE_SCHEMES: &[&str] = &["sassy-talks", "sassytalk"];
 
 /// Process-wide HTTP client, built once. A fresh `reqwest::Client` per import
 /// would throw away connection pooling and redo TLS setup each time.
 static SHARE_HTTP: std::sync::OnceLock<reqwest::Client> = std::sync::OnceLock::new();
 
+fn share_http_client() -> Result<&'static reqwest::Client, String> {
+    if let Some(c) = SHARE_HTTP.get() {
+        return Ok(c);
+    }
+    let tls = crate::transport::tls_pinning::client_config()?;
+    let client = reqwest::Client::builder()
+        .use_preconfigured_tls(tls)
+        .build()
+        .map_err(|e| format!("http client: {e}"))?;
+    let _ = SHARE_HTTP.set(client);
+    Ok(SHARE_HTTP.get().expect("SHARE_HTTP just set"))
+}
+
 /// Import an encrypted session invite from a share LINK
-/// (`https://relay.sassyconsultingllc.com/v/<id>#<base64url-key>`): fetch the
-/// opaque blob, decrypt it with the key carried in the URL fragment via the
-/// shared core, then join exactly like a pasted QR. Returns the relay room id.
+/// (`https://relay.sassyconsultingllc.com/v/<id>#<base64url-key>` or the
+/// Android app-scheme form `sassy-talks://v/<id>#key`): fetch the opaque blob,
+/// decrypt it with the key carried in the URL fragment via the shared core,
+/// then join exactly like a pasted QR. Returns the relay room id.
 ///
 /// The decryption key lives ONLY in the `#fragment`, which is never transmitted
 /// to the relay — the worker stores ciphertext it cannot read. This is the
@@ -420,26 +441,50 @@ pub async fn import_share_link(
     state.join_cellular(&qr_json).await
 }
 
+/// Parse share id + fragment key from either the https invite or Android's
+/// custom-scheme deep link (`sassy-talks://v/<id>#key`).
+fn parse_share_parts(link: &str) -> Result<(String, String), String> {
+    let token = link
+        .split_whitespace()
+        .find(|t| {
+            let lower = t.to_ascii_lowercase();
+            lower.starts_with("https://relay.sassyconsultingllc.com/v/")
+                || lower.starts_with("sassy-talks://v/")
+                || lower.starts_with("sassytalk://v/")
+        })
+        .unwrap_or(link.trim());
+    let parsed = reqwest::Url::parse(token).map_err(|_| "Malformed link".to_string())?;
+    let key_b64url = parsed
+        .fragment()
+        .filter(|f| !f.is_empty())
+        .ok_or_else(|| "Missing decryption key in URL fragment".to_string())?
+        .to_string();
+
+    let id = if parsed.scheme() == "https" && parsed.host_str() == Some(RELAY_HOST) {
+        parsed
+            .path()
+            .strip_prefix("/v/")
+            .ok_or_else(|| "Not a share link".to_string())?
+            .to_string()
+    } else if APP_SHARE_SCHEMES.contains(&parsed.scheme()) && parsed.host_str() == Some("v") {
+        // `sassy-talks://v/<id>` → host "v", path "/<id>"
+        parsed.path().trim_start_matches('/').to_string()
+    } else {
+        return Err("Not a SassyTalk invite link".to_string());
+    };
+
+    if !sassytalkie_core::share::is_valid_share_id(&id) {
+        return Err("Malformed share link".to_string());
+    }
+    Ok((id, key_b64url))
+}
+
 /// Resolve a `/v/<id>#<key>` link to the decrypted session QR JSON. Split out
 /// from the command so the fetch+decrypt logic stays free of Tauri state.
 async fn fetch_and_decrypt_share(link: &str) -> Result<String, String> {
-    let parsed = reqwest::Url::parse(link).map_err(|_| "Malformed link".to_string())?;
-    if parsed.scheme() != "https" || parsed.host_str() != Some(RELAY_HOST) {
-        return Err("Not a SassyTalk invite link".to_string());
-    }
-    let id = parsed
-        .path()
-        .strip_prefix("/v/")
-        .ok_or_else(|| "Not a share link".to_string())?;
-    if !sassytalkie_core::share::is_valid_share_id(id) {
-        return Err("Malformed share link".to_string());
-    }
-    let key_b64url = parsed
-        .fragment()
-        .ok_or_else(|| "Missing decryption key in URL fragment".to_string())?;
+    let (id, key_b64url) = parse_share_parts(link)?;
 
-    let resp = SHARE_HTTP
-        .get_or_init(reqwest::Client::new)
+    let resp = share_http_client()?
         .get(format!("https://{RELAY_HOST}/share/{id}"))
         .send()
         .await
@@ -457,5 +502,39 @@ async fn fetch_and_decrypt_share(link: &str) -> Result<String, String> {
         .await
         .map_err(|e| format!("Network error: {e}"))?;
 
-    sassytalkie_core::share::decrypt_share_blob(&blob, key_b64url)
+    sassytalkie_core::share::decrypt_share_blob(&blob, &key_b64url)
+}
+
+#[cfg(test)]
+mod share_link_tests {
+    use super::parse_share_parts;
+
+    #[test]
+    fn parses_https_invite() {
+        let (id, key) = parse_share_parts(
+            "https://relay.sassyconsultingllc.com/v/abcdefghijklmnop#abcdefghijklmnopqrstuvwxyz0123456789ab",
+        )
+        .unwrap();
+        assert_eq!(id, "abcdefghijklmnop");
+        assert_eq!(key, "abcdefghijklmnopqrstuvwxyz0123456789ab");
+    }
+
+    #[test]
+    fn parses_android_app_scheme() {
+        let (id, key) = parse_share_parts(
+            "sassy-talks://v/abcdefghijklmnop#abcdefghijklmnopqrstuvwxyz0123456789ab",
+        )
+        .unwrap();
+        assert_eq!(id, "abcdefghijklmnop");
+        assert_eq!(key, "abcdefghijklmnopqrstuvwxyz0123456789ab");
+    }
+
+    #[test]
+    fn parses_legacy_app_scheme_from_multiline_paste() {
+        let (id, _) = parse_share_parts(
+            "Join me:\nsassytalk://v/abcdefghijklmnop#abcdefghijklmnopqrstuvwxyz0123456789ab\nhttps://relay.sassyconsultingllc.com/v/abcdefghijklmnop#abcdefghijklmnopqrstuvwxyz0123456789ab",
+        )
+        .unwrap();
+        assert_eq!(id, "abcdefghijklmnop");
+    }
 }

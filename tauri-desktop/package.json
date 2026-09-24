@@ -1,7 +1,7 @@
 {
   "name": "sassy-talk",
   "private": true,
-  "version": "1.0.0",
+  "version": "3.2.7",
   "type": "module",
   "scripts": {
     "dev": "vite",

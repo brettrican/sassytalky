@@ -5,7 +5,8 @@ use log::{error, info, warn};
 /// Cellular Transport Module — WebSocket relay via Cloudflare Durable Objects
 ///
 /// Architecture:
-///   Kotlin WebSocket client (OkHttp) connects to wss://sassyconsultingllc.com/api/ptt/ws?room=SESSION_ID
+///   Kotlin WebSocket client (OkHttp) connects to wss://relay.sassyconsultingllc.com/ws?room=SESSION_ID
+///   (see RELAY_URL). This module is the JNI queue bridge only — the socket lives in Kotlin.
 ///   Binary audio frames flow through a thread-safe ring buffer between Kotlin ↔ Rust:
 ///
 ///   TX path: Rust send_audio() → outbound queue → JNI callback → Kotlin WS.send(binary)

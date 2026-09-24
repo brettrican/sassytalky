@@ -7,7 +7,6 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { invoke } from '@tauri-apps/api/core';
-import { listen, UnlistenFn } from '@tauri-apps/api/event';
 import './styles/app.css';
 import './styles/lobby.css';
 import PeerList from './components/lobby/PeerList';
@@ -91,9 +90,8 @@ export default function App() {
   const pttButtonRef = useRef<HTMLButtonElement>(null);
   const statusIntervalRef = useRef<number | null>(null);
   // Mirror isSearching into a ref so the once-mounted init/polling effect can read
-  // the latest value WITHOUT re-running (which previously re-registered the
-  // audio_level/receiving listeners on every toggle — leaking them via the async
-  // listen().then race — and reset wasReceiving, causing spurious incoming chimes).
+  // the latest value WITHOUT re-running (which previously reset wasReceiving and
+  // caused spurious incoming chimes when the poll effect re-registered).
   const isSearchingRef = useRef(isSearching);
   useEffect(() => { isSearchingRef.current = isSearching; }, [isSearching]);
 
@@ -146,24 +144,10 @@ export default function App() {
 
     setup();
 
-    // Listen for audio level events
-    let unlistenAudio: UnlistenFn | null = null;
-    let unlistenReceiving: UnlistenFn | null = null;
+    // Status polling drives receiving / audio-level UI. Backend never emitted
+    // `audio_level` / `receiving` events; do not subscribe to dead event names.
     let hadPeers = false;
     let wasReceiving = false;
-
-    listen<number>('audio_level', (event) => {
-      setAudioLevel(event.payload);
-    }).then(fn => { unlistenAudio = fn; });
-
-    listen<boolean>('receiving', (event) => {
-      setIsReceiving(event.payload);
-      // Play incoming transmission sound when we start receiving
-      if (event.payload && !wasReceiving) {
-        Sounds.incomingTransmission();
-      }
-      wasReceiving = event.payload;
-    }).then(fn => { unlistenReceiving = fn; });
 
     // Status polling (250ms for status + peers, no network info here)
     statusIntervalRef.current = window.setInterval(async () => {
@@ -171,6 +155,13 @@ export default function App() {
         const s = await invoke<AppStatus>('get_status');
         setStatus(s);
         setIsTransmitting(s.is_transmitting);
+        setIsReceiving(s.is_receiving);
+        // No meter on the backend — approximate the bar from TX/RX state.
+        setAudioLevel(s.is_transmitting || s.is_receiving ? 70 : 0);
+        if (s.is_receiving && !wasReceiving) {
+          Sounds.incomingTransmission();
+        }
+        wasReceiving = s.is_receiving;
 
         if (isSearchingRef.current) {
           const nearbyPeers = await invoke<PeerInfo[]>('get_nearby_devices');
@@ -201,13 +192,10 @@ export default function App() {
     }, 250);
 
     return () => {
-      if (unlistenAudio) unlistenAudio();
-      if (unlistenReceiving) unlistenReceiving();
       if (statusIntervalRef.current) clearInterval(statusIntervalRef.current);
     };
-    // Run ONCE on mount: setup + listeners + polling interval live for the
-    // component's lifetime. isSearching is read via isSearchingRef inside the
-    // interval, so toggling it no longer re-registers listeners / resets state.
+    // Run ONCE on mount: setup + polling interval live for the component's
+    // lifetime. isSearching is read via isSearchingRef inside the interval.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -421,10 +409,15 @@ export default function App() {
     setCellularJoining(true);
     try {
       // Accept either a raw QR JSON payload or a one-time invite LINK
-      // (https://relay.sassyconsultingllc.com/v/<id>#<key>). A link is fetched
-      // and decrypted natively (import_share_link → shared core); pasted JSON
-      // joins directly. Tauri v2 camelCases params: Rust `qr_json` -> `qrJson`.
-      const isLink = /^https:\/\/relay\.sassyconsultingllc\.com\/v\//i.test(input);
+      // (https://relay…/v/<id>#<key> or Android's sassy-talks://v/<id>#key).
+      // A link is fetched and decrypted natively (import_share_link → shared
+      // core); pasted JSON joins directly. Tauri v2 camelCases params:
+      // Rust `qr_json` -> `qrJson`.
+      const trimmed = input.trim();
+      const isLink =
+        /^https:\/\/relay\.sassyconsultingllc\.com\/v\//i.test(trimmed) ||
+        /^sassy-talks:\/\/v\//i.test(trimmed) ||
+        /^sassytalk:\/\/v\//i.test(trimmed);
       const room = isLink
         ? await invoke<string>('import_share_link', { url: input })
         : await invoke<string>('join_cellular_session', { qrJson: input });
@@ -811,7 +804,7 @@ export default function App() {
             <>
               <p className="cellular-hint">
                 Join a session over the internet — no Wi-Fi or Bluetooth needed. Paste an
-                invite <strong>link</strong> (https://relay.sassyconsultingllc.com/v/…) or the
+                invite <strong>link</strong> (https://relay…/v/… or sassy-talks://v/…) or the
                 session QR data from the phone app's "Show QR" screen.
               </p>
               <textarea

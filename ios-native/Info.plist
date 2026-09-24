@@ -79,7 +79,8 @@
 		<true/>
 	</dict>
 
-	<!-- Custom URL scheme: sassytalk://v/<id>#<key> -->
+	<!-- Custom URL schemes: sassy-talks:// (primary, minted) and legacy sassytalk://
+	     (still accepted so invites already pasted into chats keep opening). -->
 	<key>CFBundleURLTypes</key>
 	<array>
 		<dict>
@@ -87,6 +88,7 @@
 			<string>com.sassyconsulting.sassytalkie.invite</string>
 			<key>CFBundleURLSchemes</key>
 			<array>
+				<string>sassy-talks</string>
 				<string>sassytalk</string>
 			</array>
 		</dict>

@@ -12,8 +12,10 @@
 //  byte-identical to the phone (and the desktop, verified in tauri-desktop).
 //
 //  Wire protocol (must match android-native / tauri-desktop):
-//    1. GET  https://relay.sassyconsultingllc.com/auth?room=<room>  → {"token": "..."}
+//    1. GET  https://relay.sassyconsultingllc.com/auth?room=<room>&peer=<peer>
+//         → {"token": "..."}  (peer= when known; legacy room-only still accepted)
 //    2. wss://relay.sassyconsultingllc.com/ws?room=&token=&device=&peer=&client_id=
+//         (+ catchup=1 on reconnect)
 //    3. binary WS messages = sealed core::wire frames (+ OP_HEARTBEAT TLV ~every 2s)
 //
 //  Audio TX already tees sealed frames into the Rust relay outbound queue while
@@ -31,11 +33,13 @@ final class RelayClient: NSObject {
     private static let drainInterval: TimeInterval = 0.01   // 10 ms outbound poll
     private static let reconnectDelay: TimeInterval = 3.0
 
-    private let session = URLSession(configuration: .default)
+    private let session = PinnedURLSession.shared
     private var task: URLSessionWebSocketTask?
     private var heartbeatTimer: Timer?
     private var drainTimer: Timer?
     private var running = false
+    /// After the first successful dial, reconnects request ?catchup=1.
+    private var hasCompletedHandshake = false
 
     private let peerId = UIDevice.current.identifierForVendor?.uuidString ?? UUID().uuidString
     private let deviceName = UIDevice.current.name
@@ -74,8 +78,12 @@ final class RelayClient: NSObject {
     }
 
     private func fetchToken(room: String, completion: @escaping (String?) -> Void) {
-        let enc = room.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? room
-        guard let url = URL(string: "\(Self.httpsBase)/auth?room=\(enc)") else {
+        var comps = URLComponents(string: "\(Self.httpsBase)/auth")
+        comps?.queryItems = [
+            URLQueryItem(name: "room", value: room),
+            URLQueryItem(name: "peer", value: peerId),
+        ]
+        guard let url = comps?.url else {
             completion(nil); return
         }
         session.dataTask(with: url) { data, _, _ in
@@ -93,13 +101,17 @@ final class RelayClient: NSObject {
             s.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? s
         }
         let clientId = UUID().uuidString
-        let urlStr = "\(Self.wssBase)/ws?room=\(enc(room))&token=\(enc(token))"
+        var urlStr = "\(Self.wssBase)/ws?room=\(enc(room))&token=\(enc(token))"
             + "&device=\(enc(deviceName))&peer=\(enc(peerId))&client_id=\(enc(clientId))"
+        if hasCompletedHandshake {
+            urlStr += "&catchup=1"
+        }
         guard let url = URL(string: urlStr) else { running = false; return }
 
         let task = session.webSocketTask(with: url)
         self.task = task
         task.resume()
+        hasCompletedHandshake = true
         sassytalkie_relay_set_active(true)
         receiveLoop()
         startTimers()

@@ -20,11 +20,12 @@ class AudioManager: NSObject {
     private let audioEngine = AVAudioEngine()
     private let inputNode: AVAudioInputNode
     private let outputNode: AVAudioOutputNode
-    
+    private var sourceNode: AVAudioSourceNode?
+
     private var isRecording = false
     private var isPlaying = false
-    
-    // Audio format: 48kHz, mono, 16-bit PCM
+
+    // Audio format: 48kHz, mono, 16-bit PCM (Rust core)
     private let sampleRate: Double = 48000
     private let channelCount: UInt32 = 1
     private let frameSize: UInt32 = 960 // 20ms at 48kHz
@@ -37,6 +38,41 @@ class AudioManager: NSObject {
         super.init()
         
         setupAudioSession()
+        observeInterruptions()
+    }
+
+    private func observeInterruptions() {
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(handleInterruption),
+            name: AVAudioSession.interruptionNotification,
+            object: AVAudioSession.sharedInstance()
+        )
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(handleRouteChange),
+            name: AVAudioSession.routeChangeNotification,
+            object: AVAudioSession.sharedInstance()
+        )
+    }
+
+    @objc private func handleInterruption(_ note: Notification) {
+        guard let info = note.userInfo,
+              let typeVal = info[AVAudioSessionInterruptionTypeKey] as? UInt,
+              let type = AVAudioSession.InterruptionType(rawValue: typeVal) else { return }
+        if type == .ended {
+            try? AVAudioSession.sharedInstance().setActive(true)
+            if isPlaying || isRecording {
+                try? audioEngine.start()
+            }
+        }
+    }
+
+    @objc private func handleRouteChange(_ note: Notification) {
+        // Bluetooth SCO / speaker flips change the hardware sample rate; the
+        // input tap already converts whatever the node delivers. Re-activate
+        // so playAndRecord stays live after a headset unplug.
+        try? AVAudioSession.sharedInstance().setActive(true)
     }
     
     // MARK: - Audio Session
@@ -137,24 +173,20 @@ class AudioManager: NSObject {
     func startPlayback() throws {
         guard !isPlaying else { return }
         
-        let format = AVAudioFormat(
-            commonFormat: .pcmFormatInt16,
-            sampleRate: sampleRate,
-            channels: channelCount,
-            interleaved: false
-        )!
-        
-        let sourceNode = AVAudioSourceNode { [weak self] _, _, frameCount, audioBufferList -> OSStatus in
+        let graphFormat = AVAudioFormat(standardFormatWithSampleRate: sampleRate, channels: 1)!
+
+        let node = AVAudioSourceNode(format: graphFormat) { [weak self] _, _, frameCount, audioBufferList -> OSStatus in
             self?.fillOutputBuffer(audioBufferList, frameCount: frameCount) ?? noErr
         }
-        
-        audioEngine.attach(sourceNode)
-        audioEngine.connect(sourceNode, to: outputNode, format: format)
-        
+
+        audioEngine.attach(node)
+        audioEngine.connect(node, to: audioEngine.mainMixerNode, format: graphFormat)
+        sourceNode = node
+
         if !audioEngine.isRunning {
             try audioEngine.start()
         }
-        
+
         isPlaying = true
         print("🔊 Playback started")
     }
@@ -172,25 +204,26 @@ class AudioManager: NSObject {
     
     private func fillOutputBuffer(_ bufferList: UnsafeMutablePointer<AudioBufferList>, frameCount: UInt32) -> OSStatus {
         let ablPointer = UnsafeMutableAudioBufferListPointer(bufferList)
-        
+        let count = Int(frameCount)
+        var int16 = [Int16](repeating: 0, count: count)
+        let written = int16.withUnsafeMutableBufferPointer { buf -> Int in
+            guard let base = buf.baseAddress else { return 0 }
+            return Int(sassytalkie_get_audio_output(base, count))
+        }
+
         for buffer in ablPointer {
-            let samples = buffer.mData?.assumingMemoryBound(to: Int16.self)
-            
-            if let samples = samples {
-                let count = Int(frameCount)
-                
-                // Get audio from Rust
-                let written = sassytalkie_get_audio_output(samples, count)
-                
-                // Fill remaining with silence
-                if written < count {
-                    for i in written..<count {
-                        samples[i] = 0
-                    }
+            guard let ptr = buffer.mData else { continue }
+            let floats = ptr.assumingMemoryBound(to: Float.self)
+            let n = min(count, Int(buffer.mDataByteSize) / MemoryLayout<Float>.size)
+            for i in 0..<n {
+                if i < written {
+                    floats[i] = Float(int16[i]) / 32768.0
+                } else {
+                    floats[i] = 0
                 }
             }
         }
-        
+
         return noErr
     }
     

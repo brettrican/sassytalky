@@ -186,13 +186,28 @@ function prevWindowOpen(env) {
 }
 
 /**
- * Pull the capability token from an incoming request: prefer the
- * `Authorization: Bearer <token>` header, fall back to a `?token=` query param
- * (handy for browser-opened share links that can't set headers).
+ * Pull the capability token from an incoming request. Precedence:
+ *   1. Authorization: Bearer <token>
+ *   2. Sec-WebSocket-Protocol (comma list; first non-empty token-like value,
+ *      or a `sassytalk.<token>` entry)
+ *   3. X-Sassy-Token header
+ *   4. ?token= query param (Android/iOS and older clients)
  */
 export function extractToken(request, url) {
   const auth = request.headers.get("Authorization") || "";
   if (auth.startsWith("Bearer ")) return auth.slice(7).trim();
+
+  const proto = request.headers.get("Sec-WebSocket-Protocol") || "";
+  if (proto) {
+    for (const part of proto.split(",")) {
+      const p = part.trim();
+      if (p.startsWith("sassytalk.")) return p.slice("sassytalk.".length);
+    }
+  }
+
+  const hdr = request.headers.get("X-Sassy-Token");
+  if (hdr && hdr.trim()) return hdr.trim();
+
   return url.searchParams.get("token");
 }
 

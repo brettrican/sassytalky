@@ -9,6 +9,45 @@ All notable changes to SassyTalkie. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com); versions map to Android
 `versionName` (versionCode in parentheses).
 
+## [3.2.7] (83) - 2026-09-24
+
+### Fixed
+- **Play paywall promo fallback:** restore friends & family promo-code entry on
+  the Play gate so a BillingClient disconnect is not a dead end.
+- **Play Billing disconnect handling:** do not treat
+  `onBillingServiceDisconnected` as a fatal catalog failure while
+  `enableAutoServiceReconnection()` is active; Retry still calls
+  `startConnection`. Clarify that BillingClient's own
+  `"Service connection is disconnected."` debugMessage is Play's response
+  (common on sideloaded play-flavor APKs), not an intentional app teardown.
+- **Desktop share-link parity:** accept Android `sassy-talks://` /
+  `sassytalk://` invite pastes (not only https), and fetch `/share/<id>` with
+  the same TLS pin-set as the relay WebSocket. Desktop product version aligned
+  to 3.2.7 for release tracking.
+
+### Changed
+- **iOS product tree:** merge the audited iPhone Xcode project into
+  `ios-native/` (aligned to marketing 3.2.7 / build 83). Kept live iOS
+  relay/auth (peer + catchup), TLS pins, StoreKit paywall, share links, and
+  floor FFI — the zip snapshot was older on those surfaces and was not
+  copied over Android/core.
+
+## [3.2.6] (82) - 2026-09-22
+
+### Fixed
+- **Merged audit fixes on main:** presence requests authenticate against the
+  relay, FCM wake payloads accept either field shape, catchup after reconnect,
+  and Play builds no longer redeem relay promo codes.
+
+## [3.2.5] (81) - 2026-08-17
+
+### Changed
+- **Rebuilt both arm64-v8a and x86_64 native libs** from current Rust source
+  (`cargo ndk`) so the shipping `.so` files match the floor-arbitration /
+  `ptt_frames` consolidation already in tree. VersionCode 81 / versionName
+  3.2.5 — no app Kotlin feature delta beyond the native rebuild (verified from
+  the release commit).
+
 ## [3.2.4] (80) - 2026-08-17
 
 ### Changed

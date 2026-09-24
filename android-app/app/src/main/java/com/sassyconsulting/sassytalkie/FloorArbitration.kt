@@ -4,6 +4,9 @@ package com.sassyconsulting.sassytalkie
 /**
  * Pure deterministic busy-channel and emergency-preemption policy.
  *
+ * Must match core/src/floor.rs (remote_wins / should_block_local) — do not
+ * diverge the two implementations in this pass.
+ *
  * Floor occupancy is not the 400 ms UI "peer speaking" LED. That LED
  * blinks off during a cellular gap; using it as the TX lock lets a
  * second radio key up while the first stream is still draining.

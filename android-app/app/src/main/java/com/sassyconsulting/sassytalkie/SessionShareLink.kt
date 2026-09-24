@@ -329,6 +329,10 @@ object SessionShareLink {
      * Mint a room capability token from the relay's /auth endpoint — the same
      * grant used to open the WebSocket / register presence, and the one
      * /share POST requires. Blocking.
+     *
+     * Legacy room-only token (no peer=): share mint runs before we always have
+     * a peer id wired here; old clients still accept room-bound tokens and
+     * REQUIRE_AUTH_PROOF stays off so this path keeps working.
      */
     private fun fetchRoomToken(roomId: String): TokenResult {
         val req = Request.Builder()

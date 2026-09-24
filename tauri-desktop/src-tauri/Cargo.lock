@@ -3914,7 +3914,7 @@ dependencies = [
 
 [[package]]
 name = "sassy-talk"
-version = "1.0.0"
+version = "3.2.7"
 dependencies = [
  "aes-gcm",
  "android_logger",

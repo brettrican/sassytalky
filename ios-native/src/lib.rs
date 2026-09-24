@@ -32,7 +32,7 @@ pub use sassytalkie_core::session;
 // AES-GCM path Android and desktop use (parity for link-import).
 pub use sassytalkie_core::share;
 
-use std::os::raw::{c_char, c_void};
+use std::os::raw::c_char;
 use std::ffi::{CStr, CString};
 use std::sync::{Mutex, OnceLock};
 use log::info;
@@ -521,6 +521,92 @@ pub unsafe extern "C" fn sassytalkie_start_listening() -> bool {
         }
     }
     false
+}
+
+/// True once a QR/PSK session is installed (mandatory encryption).
+#[no_mangle]
+pub unsafe extern "C" fn sassytalkie_is_paired() -> bool {
+    if let Ok(g) = app_state().lock() {
+        if let Some(s) = g.as_ref() {
+            return s.is_paired();
+        }
+    }
+    false
+}
+
+/// Floor occupancy (1.5 s stale hold / 300 ms drain) — NOT the 400 ms UI LED.
+#[no_mangle]
+pub unsafe extern "C" fn sassytalkie_floor_held() -> bool {
+    if let Ok(g) = app_state().lock() {
+        if let Some(s) = g.as_ref() {
+            return s.floor().is_held(crate::control::now_ms());
+        }
+    }
+    false
+}
+
+/// UI "peer speaking" LED (400 ms). Never use this as the TX lock.
+#[no_mangle]
+pub unsafe extern "C" fn sassytalkie_peer_speaking() -> bool {
+    if let Ok(g) = app_state().lock() {
+        if let Some(s) = g.as_ref() {
+            return s.floor().peer_speaking(crate::control::now_ms());
+        }
+    }
+    false
+}
+
+/// One-shot PTT rejection reason ("Channel busy", …). Free with
+/// `sassytalkie_free_string`. NULL if the last press succeeded.
+#[no_mangle]
+pub unsafe extern "C" fn sassytalkie_take_ptt_reject() -> *mut c_char {
+    if let Ok(g) = app_state().lock() {
+        if let Some(s) = g.as_ref() {
+            if let Some(reason) = s.floor().take_reject_reason() {
+                return CString::new(reason).map(|c| c.into_raw()).unwrap_or(std::ptr::null_mut());
+            }
+        }
+    }
+    std::ptr::null_mut()
+}
+
+/// Seal session-QR JSON into a share blob. Returns JSON
+/// `{"blob_b64":"<standard>","key_b64url":"<url-safe>"}` (free with
+/// `sassytalkie_free_string`), or NULL. The key belongs in the invite fragment.
+#[no_mangle]
+pub unsafe extern "C" fn sassytalkie_encrypt_share_blob(json: *const c_char) -> *mut c_char {
+    let json = match ffi::helpers::c_string_to_rust(json) {
+        Some(s) if !s.is_empty() => s,
+        _ => return std::ptr::null_mut(),
+    };
+    match share::encrypt_share_blob(&json) {
+        Ok((blob, key_b64url)) => {
+            let blob_b64 = base64::engine::general_purpose::STANDARD.encode(&blob);
+            let out = serde_json::json!({
+                "blob_b64": blob_b64,
+                "key_b64url": key_b64url,
+            });
+            match CString::new(out.to_string()) {
+                Ok(c) => c.into_raw(),
+                Err(_) => std::ptr::null_mut(),
+            }
+        }
+        Err(_) => std::ptr::null_mut(),
+    }
+}
+
+/// JSON array of SPKI SHA-256 pins (base64) for `relay.sassyconsultingllc.com`.
+/// Free with `sassytalkie_free_string`. Single source: `core::tls_pins`.
+#[no_mangle]
+pub unsafe extern "C" fn sassytalkie_tls_pins_json() -> *mut c_char {
+    let json = serde_json::to_string(sassytalkie_core::tls_pins::SPKI_PINS_SHA256_B64)
+        .unwrap_or_else(|_| "[]".into());
+    CString::new(json).map(|c| c.into_raw()).unwrap_or(std::ptr::null_mut())
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn sassytalkie_tls_pinning_enabled() -> bool {
+    sassytalkie_core::tls_pins::PINNING_DEFAULT && sassytalkie_core::tls_pins::pins_complete()
 }
 
 /// Get current state (0=Idle, 1=Connecting, 2=Connected, 3=Transmitting, 4=Receiving)

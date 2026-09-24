@@ -66,3 +66,20 @@ describe("versioned issuance proof", () => {
       .toBe("Invalid proof");
   });
 });
+
+describe("extractToken precedence", () => {
+  it("prefers Authorization, then protocol, then X-Sassy-Token, then query", async () => {
+    const { extractToken } = await import("../src/relay-auth.js");
+    const url = new URL("https://relay.example/ws?room=r&token=from-query");
+    const bearer = new Request(url, { headers: { Authorization: "Bearer from-bearer" } });
+    expect(extractToken(bearer, url)).toBe("from-bearer");
+    const proto = new Request(url, {
+      headers: { "Sec-WebSocket-Protocol": "sassytalk.from-proto" },
+    });
+    expect(extractToken(proto, url)).toBe("from-proto");
+    const hdr = new Request(url, { headers: { "X-Sassy-Token": "from-header" } });
+    expect(extractToken(hdr, url)).toBe("from-header");
+    const q = new Request(url);
+    expect(extractToken(q, url)).toBe("from-query");
+  });
+});

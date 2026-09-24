@@ -3,7 +3,7 @@
 # CodeMark: SCLLC1-sassytalkie-ONZZJRG4UONF
 [package]
 name = "sassy-talk"
-version = "1.0.0"
+version = "3.2.7"
 description = "Cross-platform PTT walkie-talkie with retro vibes"
 authors = ["Sassy Consulting LLC"]
 license = "Proprietary"
