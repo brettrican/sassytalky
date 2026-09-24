@@ -44,6 +44,10 @@ jobs:
       - name: Install XcodeGen
         run: brew install xcodegen
 
+      - name: Patch audiopus CMakeLists for CMake 4.x compatibility
+        run: |
+          find ~/.cargo/registry/src -name "CMakeLists.txt" -path "*/audiopus_sys-0.2.2/opus/*" -exec sed -i 's/cmake_minimum_required(VERSION 3.1)/cmake_minimum_required(VERSION 3.5)/' {} \;
+
       - name: Build Rust static library for iOS
         run: bash build.sh
 
