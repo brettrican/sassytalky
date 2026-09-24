@@ -27,8 +27,8 @@ android {
         minSdk = 24
         // Play requires targetSdk 36 for app updates from 31 August 2026.
         targetSdk = 36
-        versionCode = 82
-        versionName = "3.2.6"
+        versionCode = 83
+        versionName = "3.2.7"
         
         // Feature flag: enable or disable cellular (relay) transport at build time
         buildConfigField("boolean", "ENABLE_CELLULAR_RELAY", "true")

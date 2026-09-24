@@ -9,6 +9,12 @@ All notable changes to SassyTalkie. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com); versions map to Android
 `versionName` (versionCode in parentheses).
 
+## [3.2.7] (83) - 2026-09-24
+
+### Fixed
+- **Play paywall promo fallback:** restore friends & family promo-code entry on
+  the Play gate so a BillingClient disconnect is not a dead end.
+
 ## [3.2.6] (82) - 2026-09-22
 
 ### Fixed

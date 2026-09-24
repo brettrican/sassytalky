@@ -10,10 +10,13 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.*
@@ -21,12 +24,14 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.suspendCancellableCoroutine
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
 import kotlin.coroutines.resume
 import com.android.billingclient.api.AcknowledgePurchaseParams
@@ -43,13 +48,14 @@ import com.sassyconsulting.sassytalkie.BuildConfig
 import com.sassyconsulting.sassytalkie.ui.theme.DarkBg
 import com.sassyconsulting.sassytalkie.ui.theme.PrimaryBlue
 import com.sassyconsulting.sassytalkie.ui.theme.StatusDisconnected
+import com.sassyconsulting.sassytalkie.ui.theme.SurfaceBg
 import com.sassyconsulting.sassytalkie.ui.theme.Teal
 import com.sassyconsulting.sassytalkie.ui.theme.TextGray
 import com.sassyconsulting.sassytalkie.ui.theme.TextWhite
 
 /**
- * Play-flavor entitlement gate: Google Play Billing purchase only.
- * Promo-code redemption is direct-flavor only (Play policy); see docs/LICENSING.md.
+ * Play-flavor entitlement gate: Google Play Billing purchase, with promo-code
+ * redemption for friends & family (relay `/license/promo`).
  *
  * Contract shared with the direct flavor (same fully-qualified name, different
  * source set — AppNavigation compiles against whichever flavor is built):
@@ -66,23 +72,33 @@ object Entitlements {
         // Debug builds are always entitled: since the transport gate moved
         // below the UI (AutoConnectManager.autoConnect), a fresh sideloaded
         // debug install with no purchase got ZERO connections — dead radio on
-        // every dev device and emulator. Release builds do not take this path
-        // (BuildConfig.DEBUG is false in release).
+        // every dev device and emulator. Release builds are unaffected.
         if (BuildConfig.DEBUG) return true
         val p = LicenseStore.prefs(context) ?: return false
-        return p.getBoolean(LicenseStore.KEY_UNLOCKED, false)
+        if (p.getBoolean(LicenseStore.KEY_UNLOCKED, false)) return true
+        return LicensePromo.hasValidReceipt(context)
     }
 
     /**
-     * Reconcile entitlement against Play Billing (no promo path on Play flavor).
+     * Reconcile entitlement: promo receipts refresh against the relay worker;
+     * otherwise reconnect to Play and reconcile the cached purchase.
      */
     fun refresh(context: Context, onResult: (Boolean) -> Unit = {}) {
         val appContext = context.applicationContext
         // Debug builds are always entitled — must mirror isUnlockedCached's
         // bypass, or the post-startup reconciliation re-locks a dev install
-        // onto the paywall (no Play purchase on emulators). Release builds do
-        // not take this path (BuildConfig.DEBUG is false in release).
+        // onto the paywall (no Play purchase on emulators).
         if (BuildConfig.DEBUG) return onResult(true)
+        if (LicenseStore.prefs(appContext)?.getString(LicenseStore.KEY_KIND, null) == "promo") {
+            if (!LicensePromo.hasValidReceipt(appContext)) {
+                onResult(false)
+                return
+            }
+            LicensePromo.refreshIfNeeded(appContext) { ok ->
+                onResult(ok || LicensePromo.hasValidReceipt(appContext))
+            }
+            return
+        }
         // Guarantee onResult fires EXACTLY once. Play Billing may drop the
         // connection (onBillingServiceDisconnected) or never call back at all;
         // a missed callback would hang the Restore button's coroutine forever.
@@ -158,6 +174,8 @@ object Entitlements {
         var details by remember { mutableStateOf<ProductDetails?>(null) }
         var error by remember { mutableStateOf<String?>(null) }
         var busy by remember { mutableStateOf(false) }
+        var promoInput by remember { mutableStateOf("") }
+        var promoBusy by remember { mutableStateOf(false) }
         var catalogLoading by remember { mutableStateOf(true) }
         var catalogAttempt by remember { mutableIntStateOf(0) }
 
@@ -222,6 +240,12 @@ object Entitlements {
         }
 
         LaunchedEffect(catalogAttempt) {
+            if (LicensePromo.hasValidReceipt(appContext)) {
+                // Promo entitlement is receipt-driven (time-limited); do NOT set
+                // the permanent KEY_UNLOCKED flag or the promo would never expire.
+                onUnlocked()
+                return@LaunchedEffect
+            }
             catalogLoading = true
             error = null
             details = null
@@ -424,6 +448,74 @@ object Entitlements {
                         },
                     ) {
                         Text("Already purchased? Restore", color = TextGray, fontSize = 13.sp)
+                    }
+                }
+                if (!busy) {
+                    Spacer(modifier = Modifier.height(24.dp))
+                    Text(
+                        text = "Have a promo code?",
+                        fontSize = 13.sp,
+                        color = TextGray,
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    OutlinedTextField(
+                        value = promoInput,
+                        onValueChange = { promoInput = it.uppercase() },
+                        placeholder = { Text("Promo code", color = TextGray) },
+                        singleLine = true,
+                        enabled = !promoBusy,
+                        keyboardOptions = KeyboardOptions(
+                            capitalization = KeyboardCapitalization.Characters,
+                        ),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedTextColor = TextWhite,
+                            unfocusedTextColor = Teal,
+                            focusedBorderColor = PrimaryBlue,
+                            unfocusedBorderColor = TextGray,
+                            cursorColor = Teal,
+                            focusedContainerColor = SurfaceBg,
+                            unfocusedContainerColor = SurfaceBg,
+                        ),
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                    Spacer(modifier = Modifier.height(12.dp))
+                    if (promoBusy) {
+                        CircularProgressIndicator(color = Teal)
+                    } else {
+                        Button(
+                            onClick = {
+                                promoBusy = true
+                                error = null
+                                val code = promoInput.trim()
+                                scope.launch {
+                                    val res = withContext(Dispatchers.IO) {
+                                        LicensePromo.redeemBlocking(appContext, code)
+                                    }
+                                    promoBusy = false
+                                    when (res) {
+                                        LicensePromo.RedeemResult.Ok -> {
+                                            // redeemBlocking persisted the time-limited receipt;
+                                            // isUnlockedCached honors it via hasValidReceipt. Do NOT
+                                            // set the permanent KEY_UNLOCKED flag (a 30-day promo
+                                            // would otherwise become permanent).
+                                            onUnlocked()
+                                        }
+                                        LicensePromo.RedeemResult.InvalidFormat ->
+                                            error = "Enter a valid promo code (6–40 characters)"
+                                        LicensePromo.RedeemResult.NetworkError ->
+                                            error = "Can't reach the license server — check your connection"
+                                        is LicensePromo.RedeemResult.Rejected ->
+                                            error = res.message
+                                    }
+                                }
+                            },
+                            enabled = promoInput.isNotBlank(),
+                            colors = ButtonDefaults.buttonColors(containerColor = PrimaryBlue),
+                            shape = RoundedCornerShape(25.dp),
+                            modifier = Modifier.height(48.dp).width(240.dp),
+                        ) {
+                            Text("Redeem promo", fontSize = 15.sp)
+                        }
                     }
                 }
                 error?.let {
