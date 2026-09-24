@@ -1,0 +1,311 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		313F89DF014924763E835821 /* AudioManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 216125E3676DAE2830B5BE83 /* AudioManager.swift */; };
+		4EE4C2B39A7FE1B432E27047 /* BluetoothManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0F813C56B76B916D0060C327 /* BluetoothManager.swift */; };
+		C125BEEBEC5FC348E17311BF /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 71BF2EB6D1957112A62EEEF9 /* ContentView.swift */; };
+		549F5E30E73695DD1C5E275C /* HostQRView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4927B55BF821BEBFDB976F37 /* HostQRView.swift */; };
+		B210EF54F7192A2962BF7B8D /* KeychainStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 92553FDA01D898D5D21E0202 /* KeychainStore.swift */; };
+		89E740345408FCF4CAB801C2 /* ManagedConfig.swift in Sources */ = {isa = PBXBuildFile; fileRef = EE634ABA3EBBE07FF4271655 /* ManagedConfig.swift */; };
+		4631C777DA2567DCE7ED9AEF /* PaywallView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 76CE9922865C32AE7A572D76 /* PaywallView.swift */; };
+		7EB7E2198B4668E545DE0AEF /* PushWakePolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = 37233C04DF67564670A9848E /* PushWakePolicy.swift */; };
+		2619EA23DD2D42053F0E71E3 /* QRScannerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = ABDF4AFF8F8E4B7DFDAD6230 /* QRScannerView.swift */; };
+		B6AFFB16A86292BBB47EE7E9 /* RelayClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 23A1446C488072FFF1B11EDC /* RelayClient.swift */; };
+		479D7CF6DE711B272FE39578 /* RelayPinning.swift in Sources */ = {isa = PBXBuildFile; fileRef = 04C78C1C682B4907AE0877CB /* RelayPinning.swift */; };
+		49A6E38ACDAEADEDB8E978F3 /* SassyTalkieApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 363F45E2C614D2B4E547E605 /* SassyTalkieApp.swift */; };
+		882320F633CA7FC4A517C263 /* SassyTalkieViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = FAC98120C070AE1404CE4ACC /* SassyTalkieViewModel.swift */; };
+		61ECABE55E4A7E79C145CA81 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8E583E3A9E87444236DC3220 /* SettingsView.swift */; };
+		868BD652E9E3107502C272E5 /* ShareLinkClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 65890A09E07C7BE1ED2014F2 /* ShareLinkClient.swift */; };
+		58EB6D1F4038F13E5733F6EC /* StoreKitEntitlements.swift in Sources */ = {isa = PBXBuildFile; fileRef = 37C1837CD81AEC26DF793575 /* StoreKitEntitlements.swift */; };
+		CA75BA78B0776DD67FB50733 /* Theme.swift in Sources */ = {isa = PBXBuildFile; fileRef = EA0C2C3E8FDF2D0B2420D6C2 /* Theme.swift */; };
+		73CFD48E49AAD6A7464448FE /* TrialStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6AE9A208B546667F70838329 /* TrialStore.swift */; };
+		8E9C99D1B45DB4E6936098BB /* UpdateReset.swift in Sources */ = {isa = PBXBuildFile; fileRef = 99A9EF2B500D2366932E9626 /* UpdateReset.swift */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXFileReference section */
+		C66780D7416288CE808B3D19 /* SassyTalkie.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = SassyTalkie.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		A5FC72A23754CDAE8402BA1D /* SassyTalkie-Bridging-Header.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "SassyTalkie-Bridging-Header.h"; sourceTree = "<group>"; };
+		216125E3676DAE2830B5BE83 /* AudioManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioManager.swift; sourceTree = "<group>"; };
+		0F813C56B76B916D0060C327 /* BluetoothManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BluetoothManager.swift; sourceTree = "<group>"; };
+		71BF2EB6D1957112A62EEEF9 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
+		4927B55BF821BEBFDB976F37 /* HostQRView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HostQRView.swift; sourceTree = "<group>"; };
+		92553FDA01D898D5D21E0202 /* KeychainStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeychainStore.swift; sourceTree = "<group>"; };
+		EE634ABA3EBBE07FF4271655 /* ManagedConfig.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ManagedConfig.swift; sourceTree = "<group>"; };
+		76CE9922865C32AE7A572D76 /* PaywallView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PaywallView.swift; sourceTree = "<group>"; };
+		37233C04DF67564670A9848E /* PushWakePolicy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PushWakePolicy.swift; sourceTree = "<group>"; };
+		ABDF4AFF8F8E4B7DFDAD6230 /* QRScannerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QRScannerView.swift; sourceTree = "<group>"; };
+		23A1446C488072FFF1B11EDC /* RelayClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RelayClient.swift; sourceTree = "<group>"; };
+		04C78C1C682B4907AE0877CB /* RelayPinning.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RelayPinning.swift; sourceTree = "<group>"; };
+		363F45E2C614D2B4E547E605 /* SassyTalkieApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SassyTalkieApp.swift; sourceTree = "<group>"; };
+		FAC98120C070AE1404CE4ACC /* SassyTalkieViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SassyTalkieViewModel.swift; sourceTree = "<group>"; };
+		8E583E3A9E87444236DC3220 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
+		65890A09E07C7BE1ED2014F2 /* ShareLinkClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShareLinkClient.swift; sourceTree = "<group>"; };
+		37C1837CD81AEC26DF793575 /* StoreKitEntitlements.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StoreKitEntitlements.swift; sourceTree = "<group>"; };
+		EA0C2C3E8FDF2D0B2420D6C2 /* Theme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Theme.swift; sourceTree = "<group>"; };
+		6AE9A208B546667F70838329 /* TrialStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrialStore.swift; sourceTree = "<group>"; };
+		99A9EF2B500D2366932E9626 /* UpdateReset.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UpdateReset.swift; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXGroup section */
+		D8A854F5F668944D9D332D6F = {
+			isa = PBXGroup;
+			children = (
+				A5FC72A23754CDAE8402BA1D /* SassyTalkie-Bridging-Header.h */,
+				9D953DD836F9EF8263BD821D /* ios-native */,
+				B93D504598C4D020D44C920B /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		9D953DD836F9EF8263BD821D /* ios-native */ = {
+			isa = PBXGroup;
+			children = (
+				216125E3676DAE2830B5BE83 /* AudioManager.swift */,
+				0F813C56B76B916D0060C327 /* BluetoothManager.swift */,
+				71BF2EB6D1957112A62EEEF9 /* ContentView.swift */,
+				4927B55BF821BEBFDB976F37 /* HostQRView.swift */,
+				92553FDA01D898D5D21E0202 /* KeychainStore.swift */,
+				EE634ABA3EBBE07FF4271655 /* ManagedConfig.swift */,
+				76CE9922865C32AE7A572D76 /* PaywallView.swift */,
+				37233C04DF67564670A9848E /* PushWakePolicy.swift */,
+				ABDF4AFF8F8E4B7DFDAD6230 /* QRScannerView.swift */,
+				23A1446C488072FFF1B11EDC /* RelayClient.swift */,
+				04C78C1C682B4907AE0877CB /* RelayPinning.swift */,
+				363F45E2C614D2B4E547E605 /* SassyTalkieApp.swift */,
+				FAC98120C070AE1404CE4ACC /* SassyTalkieViewModel.swift */,
+				8E583E3A9E87444236DC3220 /* SettingsView.swift */,
+				65890A09E07C7BE1ED2014F2 /* ShareLinkClient.swift */,
+				37C1837CD81AEC26DF793575 /* StoreKitEntitlements.swift */,
+				EA0C2C3E8FDF2D0B2420D6C2 /* Theme.swift */,
+				6AE9A208B546667F70838329 /* TrialStore.swift */,
+				99A9EF2B500D2366932E9626 /* UpdateReset.swift */,
+			);
+			name = "ios-native";
+			path = .;
+			sourceTree = "<group>";
+		};
+		B93D504598C4D020D44C920B /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				C66780D7416288CE808B3D19 /* SassyTalkie.app */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		376774D5F624590B8D572E55 /* SassyTalkie */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 154881153FB993FEC87024BB /* Build configuration list for PBXNativeTarget "SassyTalkie" */;
+			buildPhases = (
+				4EDED8798AF0F7E428E7C518 /* Sources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = SassyTalkie;
+			packageProductDependencies = (
+			);
+			productName = SassyTalkie;
+			productReference = C66780D7416288CE808B3D19 /* SassyTalkie.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		29DF035FC8CEFE2D604A6DA1 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = YES;
+				LastUpgradeCheck = 1500;
+				TargetAttributes = {
+					376774D5F624590B8D572E55 = {
+						ProvisioningStyle = Automatic;
+					};
+				};
+			};
+			buildConfigurationList = 9C6F265A86DAE0D164597A04 /* Build configuration list for PBXProject "SassyTalkie" */;
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				Base,
+				en,
+			);
+			mainGroup = D8A854F5F668944D9D332D6F;
+			minimizedProjectReferenceProxies = 1;
+			preferredProjectObjectVersion = 77;
+			productRefGroup = B93D504598C4D020D44C920B /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				376774D5F624590B8D572E55 /* SassyTalkie */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXSourcesBuildPhase section */
+		4EDED8798AF0F7E428E7C518 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				313F89DF014924763E835821 /* AudioManager.swift in Sources */,
+				4EE4C2B39A7FE1B432E27047 /* BluetoothManager.swift in Sources */,
+				C125BEEBEC5FC348E17311BF /* ContentView.swift in Sources */,
+				549F5E30E73695DD1C5E275C /* HostQRView.swift in Sources */,
+				B210EF54F7192A2962BF7B8D /* KeychainStore.swift in Sources */,
+				89E740345408FCF4CAB801C2 /* ManagedConfig.swift in Sources */,
+				4631C777DA2567DCE7ED9AEF /* PaywallView.swift in Sources */,
+				7EB7E2198B4668E545DE0AEF /* PushWakePolicy.swift in Sources */,
+				2619EA23DD2D42053F0E71E3 /* QRScannerView.swift in Sources */,
+				B6AFFB16A86292BBB47EE7E9 /* RelayClient.swift in Sources */,
+				479D7CF6DE711B272FE39578 /* RelayPinning.swift in Sources */,
+				49A6E38ACDAEADEDB8E978F3 /* SassyTalkieApp.swift in Sources */,
+				882320F633CA7FC4A517C263 /* SassyTalkieViewModel.swift in Sources */,
+				61ECABE55E4A7E79C145CA81 /* SettingsView.swift in Sources */,
+				868BD652E9E3107502C272E5 /* ShareLinkClient.swift in Sources */,
+				58EB6D1F4038F13E5733F6EC /* StoreKitEntitlements.swift in Sources */,
+				CA75BA78B0776DD67FB50733 /* Theme.swift in Sources */,
+				73CFD48E49AAD6A7464448FE /* TrialStore.swift in Sources */,
+				8E9C99D1B45DB4E6936098BB /* UpdateReset.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin XCBuildConfiguration section */
+		4C878B3AE6DB036870FA2C1B /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				INFOPLIST_FILE = Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 14.0;
+				"LIBRARY_SEARCH_PATHS[sdk=iphoneos*]" = "$(PROJECT_DIR)/target/aarch64-apple-ios/release";
+				"LIBRARY_SEARCH_PATHS[sdk=iphonesimulator*]" = "$(PROJECT_DIR)/target/universal-sim/release";
+				OTHER_LDFLAGS = (
+					"-lsassytalkie_ios",
+					"-framework Security",
+					"-framework AVFoundation",
+					"-framework CoreBluetooth",
+					"-framework Network",
+					"-framework StoreKit",
+				);
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_OBJC_BRIDGING_HEADER = "SassyTalkie-Bridging-Header.h";
+				SWIFT_VERSION = 5.9;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+		5D886593D41522FE8DAE4AF5 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_TESTABILITY = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				ONLY_ACTIVE_ARCH = YES;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				INFOPLIST_FILE = Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 14.0;
+				"LIBRARY_SEARCH_PATHS[sdk=iphoneos*]" = "$(PROJECT_DIR)/target/aarch64-apple-ios/release";
+				"LIBRARY_SEARCH_PATHS[sdk=iphonesimulator*]" = "$(PROJECT_DIR)/target/universal-sim/release";
+				OTHER_LDFLAGS = (
+					"-lsassytalkie_ios",
+					"-framework Security",
+					"-framework AVFoundation",
+					"-framework CoreBluetooth",
+					"-framework Network",
+					"-framework StoreKit",
+				);
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_OBJC_BRIDGING_HEADER = "SassyTalkie-Bridging-Header.h";
+				SWIFT_VERSION = 5.9;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		EA6B242AA385E9A62963DA81 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = SassyTalkie.entitlements;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 83;
+				INFOPLIST_FILE = Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 3.2.7;
+				PRODUCT_BUNDLE_IDENTIFIER = com.sassyconsulting.sassytalkie;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		595987C53D66920154CB4304 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = SassyTalkie.entitlements;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 83;
+				INFOPLIST_FILE = Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 3.2.7;
+				PRODUCT_BUNDLE_IDENTIFIER = com.sassyconsulting.sassytalkie;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		9C6F265A86DAE0D164597A04 /* Build configuration list for PBXProject "SassyTalkie" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				5D886593D41522FE8DAE4AF5 /* Debug */,
+				4C878B3AE6DB036870FA2C1B /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		154881153FB993FEC87024BB /* Build configuration list for PBXNativeTarget "SassyTalkie" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				EA6B242AA385E9A62963DA81 /* Debug */,
+				595987C53D66920154CB4304 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = 29DF035FC8CEFE2D604A6DA1 /* Project object */;
+}

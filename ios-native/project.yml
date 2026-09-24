@@ -41,8 +41,8 @@ targets:
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.sassyconsulting.sassytalkie
-        MARKETING_VERSION: "3.2.4"
-        CURRENT_PROJECT_VERSION: "80"
+        MARKETING_VERSION: "3.2.7"
+        CURRENT_PROJECT_VERSION: "83"
         CODE_SIGN_STYLE: Automatic
         # Associated Domains (Universal Links for /v/ invite links). The file is
         # hand-maintained like Info.plist; see SassyTalkie.entitlements.

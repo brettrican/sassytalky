@@ -25,6 +25,13 @@ All notable changes to SassyTalkie. Format loosely follows
   the same TLS pin-set as the relay WebSocket. Desktop product version aligned
   to 3.2.7 for release tracking.
 
+### Changed
+- **iOS product tree:** merge the audited iPhone Xcode project into
+  `ios-native/` (aligned to marketing 3.2.7 / build 83). Kept live iOS
+  relay/auth (peer + catchup), TLS pins, StoreKit paywall, share links, and
+  floor FFI — the zip snapshot was older on those surfaces and was not
+  copied over Android/core.
+
 ## [3.2.6] (82) - 2026-09-22
 
 ### Fixed
