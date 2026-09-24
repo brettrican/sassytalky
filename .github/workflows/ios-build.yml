@@ -44,6 +44,9 @@ jobs:
       - name: Install XcodeGen
         run: brew install xcodegen
 
+      - name: Build Rust static library for iOS
+        run: bash build.sh
+
       - name: Generate Xcode project
         run: xcodegen generate
 
@@ -53,14 +56,14 @@ jobs:
             -scheme SassyTalkie \
             -sdk iphonesimulator \
             -configuration Debug \
+            -derivedDataPath /tmp/sassytalky-dd \
             build
 
       - name: Upload simulator build artifacts
         uses: actions/upload-artifact@v4
         with:
           name: ios-simulator-build
-          path: |
-            /tmp/sassytalky-dd/Build/Products/Debug-iphonesimulator/SassyTalkie.app
+          path: /tmp/sassytalky-dd/Build/Products/Debug-iphonesimulator/SassyTalkie.app
 
       - name: Build for iOS Device (Release)
         run: |
@@ -68,11 +71,11 @@ jobs:
             -scheme SassyTalkie \
             -sdk iphoneos \
             -configuration Release \
+            -derivedDataPath /tmp/sassytalky-dd \
             build
 
       - name: Upload device build artifacts
         uses: actions/upload-artifact@v4
         with:
           name: ios-device-build
-          path: |
-            /tmp/sassytalky-dd/Build/Products/Release-iphoneos/SassyTalkie.app
+          path: /tmp/sassytalky-dd/Build/Products/Release-iphoneos/SassyTalkie.app
