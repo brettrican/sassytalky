@@ -68,11 +68,16 @@ jobs:
             -derivedDataPath /tmp/sassytalky-dd \
             build 2>&1 | tail -50
 
+      - name: Package simulator .app as zip
+        run: |
+          cd /tmp/sassytalky-dd/Build/Products/Debug-iphonesimulator
+          zip -r /tmp/SassyTalkie-simulator.zip SassyTalkie.app
+
       - name: Upload simulator build artifacts
         uses: actions/upload-artifact@v4
         with:
           name: ios-simulator-build
-          path: /tmp/sassytalky-dd/Build/Products/Debug-iphonesimulator/SassyTalkie.app
+          path: /tmp/SassyTalkie-simulator.zip
 
       - name: Build for iOS Device (Release) - skipped (requires iOS DeviceSupport)
         run: |
@@ -88,4 +93,4 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: ios-device-build
-          path: /tmp/sassytalky-dd/Build/Products/Release-iphoneos/SassyTalkie.app
+          path: /tmp/SassyTalkie-device.zip
