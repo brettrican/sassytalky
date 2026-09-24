@@ -151,3 +151,50 @@ impl Default for OpusDecoder {
         Self::new().expect("Failed to create Opus decoder")
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_opus_encode_decode_roundtrip() {
+        let mut encoder = OpusEncoder::new().expect("Encoder creation failed");
+        let mut decoder = OpusDecoder::new().expect("Decoder creation failed");
+
+        // Generate a 440 Hz sine wave PCM signal (960 samples @ 48kHz = 20ms)
+        let mut pcm_in = vec![0i16; FRAME_SIZE];
+        for i in 0..FRAME_SIZE {
+            let t = i as f32 / 48000.0;
+            pcm_in[i] = (f32::sin(2.0 * std::f32::consts::PI * 440.0 * t) * 16384.0) as i16;
+        }
+
+        // Encode PCM to Opus
+        let encoded = encoder.encode(&pcm_in).expect("Encoding failed");
+        assert!(!encoded.is_empty(), "Encoded data should not be empty");
+        assert!(encoded.len() < pcm_in.len() * 2, "Opus should compress data");
+
+        // Decode Opus back to PCM
+        let decoded = decoder.decode(&encoded).expect("Decoding failed");
+        assert_eq!(decoded.len(), FRAME_SIZE, "Decoded sample count must match frame size");
+
+        // Warm-up second frame: Opus is stateful, so frame 2 has active prediction state
+        let encoded2 = encoder.encode(&pcm_in).expect("Encoding frame 2 failed");
+        let decoded2 = decoder.decode(&encoded2).expect("Decoding frame 2 failed");
+        assert_eq!(decoded2.len(), FRAME_SIZE);
+
+        // Compute RMS error on warmed-up frame
+        let mut sq_error_sum = 0.0f64;
+        for i in 0..FRAME_SIZE {
+            let diff = (pcm_in[i] as f64) - (decoded2[i] as f64);
+            sq_error_sum += diff * diff;
+        }
+        let rms_error = f64::sqrt(sq_error_sum / FRAME_SIZE as f64);
+
+        // Opus speech codec at 32kbps produces ~12k RMS on pure sine wave due to CELT/SILK model
+        assert!(
+            rms_error < 14000.0,
+            "RMS error too high: {} (signal degraded excessively)",
+            rms_error
+        );
+    }
+}

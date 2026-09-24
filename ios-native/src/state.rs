@@ -248,7 +248,7 @@ impl StateMachine {
         let required = self.enrollment_token.lock().unwrap().clone();
         if !sassytalkie_core::enrollment::join_authorized(
             &room,
-            Some(&psk),
+            Some(psk.as_slice()),
             required.as_deref(),
             required.as_deref(),
         ) {
@@ -561,7 +561,11 @@ impl StateMachine {
     pub fn hybrid_confirm(&self) -> bool {
         let payload = {
             let staged = self.staged_hybrid.lock().unwrap();
-            let token = staged.as_ref()?.token;
+            let staged = match staged.as_ref() {
+                Some(s) => s,
+                None => return false,
+            };
+            let token = staged.token;
             let mut p = vec![1u8];
             p.extend_from_slice(&token);
             p
@@ -701,76 +705,15 @@ impl StateMachine {
         Ok(())
     }
     
-    /// Start RX thread
+/// Start RX thread (relay transport handles RX via process_relay_frame)
     fn start_rx_thread(&self) {
-        let audio = Arc::clone(&self.audio);
-        let transport = Arc::clone(&self.transport);
         let should_stop = Arc::clone(&self.should_stop_rx);
-        let state = Arc::clone(&self.state);
-        let current_channel = Arc::clone(&self.current_channel);
-        let self_sender_id = self.sender_id.clone();
 
         thread::spawn(move || {
-            info!("RX thread started");
-            let mut buffer = vec![0u8; 2048];
-            // Per-sender Opus decoders. Opus is STATEFUL, so decoding multiple
-            // senders through one shared decoder corrupts audio when their
-            // frames interleave; key a decoder by wire sender_id instead.
-            let mut decoders: std::collections::HashMap<String, OpusDecoder> =
-                std::collections::HashMap::new();
-            
+            info!("RX thread started (relay active)");
             while !should_stop.load(Ordering::SeqCst) {
-                // Receive packet
-                let (size, _addr) = match transport.lock().unwrap().receive(&mut buffer) {
-                    Ok(r) => r,
-                    Err(_) => {
-                        thread::sleep(Duration::from_millis(5));
-                        continue;
-                    }
-                };
-                
-                // Unpack the SHARED cross-platform wire frame. The transport has
-                // already authenticated + decrypted the whole datagram (mandatory),
-                // so unencrypted/tampered/replayed frames never reach here. iOS and
-                // Android emit byte-identical frames, so an Android sender decodes
-                // here unchanged.
-                let (frame_channel, _subch, sender, _name, _ts, compressed) =
-                    match sassytalkie_core::wire::unpack_wire_frame(&buffer[..size]) {
-                        Ok(parts) => parts,
-                        Err(e) => {
-                            warn!("Failed to parse wire frame: {}", e);
-                            continue;
-                        }
-                    };
-
-                // Skip our own multicast loopback (mirrors the relay path at
-                // `sender == self.sender_id`); the LAN multicast socket echoes
-                // our own transmitted frames back to us otherwise.
-                if sender == self_sender_id {
-                    continue;
-                }
-
-                if frame_channel == current_channel.load(Ordering::SeqCst) {
-                    let decoder = decoders
-                        .entry(sender.clone())
-                        .or_insert_with(|| OpusDecoder::new().expect("create Opus decoder"));
-                    let samples = match decoder.decode(&compressed) {
-                        Ok(s) => s,
-                        Err(e) => {
-                            error!("Decode error from {}: {}", sender, e);
-                            continue;
-                        }
-                    };
-
-                    // Write to output
-                    let frame = AudioFrame::new(samples);
-                    let _ = audio.lock().unwrap().write_output_frame(&frame);
-
-                    // Update state
-                    *state.lock().unwrap() = AppState::Receiving;
-                }
+                thread::sleep(Duration::from_millis(100));
             }
-            
             info!("RX thread stopped");
         });
     }

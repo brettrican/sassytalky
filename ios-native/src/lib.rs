@@ -12,16 +12,13 @@
 pub mod audio;
 pub mod bluetooth;
 pub mod codec;
-pub mod protocol;
 pub mod state;
 pub mod transport;
 pub mod control;
 pub mod ffi;
-pub mod floor;
 
 pub use audio::{AudioEngine, AudioFrame};
 pub use codec::{OpusEncoder, OpusDecoder};
-pub use protocol::{Packet, PacketType};
 pub use state::{StateMachine, AppState};
 
 // Shared cross-platform crypto/session/PQC from the core crate — the SAME engine
