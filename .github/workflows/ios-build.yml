@@ -1,0 +1,78 @@
+# Copyright (c) 2026 Shane Smith / Sassy Consulting LLC. All rights reserved.
+# iOS-only build workflow — builds the SassyTalkie iOS app on macOS runner
+# (no Android build, no cloudflare worker, no tauri desktop).
+#
+# Runs on every push to main that touches ios-native/ or core/.
+name: iOS Build
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'ios-native/**'
+      - 'core/**'
+      - '.github/workflows/ios-build.yml'
+  pull_request:
+    paths:
+      - 'ios-native/**'
+      - 'core/**'
+      - '.github/workflows/ios-build.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  ios-build:
+    name: Build SassyTalkie iOS
+    runs-on: macos-latest
+    defaults:
+      run:
+        working-directory: ios-native
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-apple-ios, x86_64-apple-ios, aarch64-apple-ios-sim
+
+      - name: Install XcodeGen
+        run: brew install xcodegen
+
+      - name: Generate Xcode project
+        run: xcodegen generate
+
+      - name: Build for iOS Simulator
+        run: |
+          xcodebuild -project SassyTalkie.xcodeproj \
+            -scheme SassyTalkie \
+            -sdk iphonesimulator \
+            -configuration Debug \
+            build
+
+      - name: Upload simulator build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: ios-simulator-build
+          path: |
+            /tmp/sassytalky-dd/Build/Products/Debug-iphonesimulator/SassyTalkie.app
+
+      - name: Build for iOS Device (Release)
+        run: |
+          xcodebuild -project SassyTalkie.xcodeproj \
+            -scheme SassyTalkie \
+            -sdk iphoneos \
+            -configuration Release \
+            build
+
+      - name: Upload device build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: ios-device-build
+          path: |
+            /tmp/sassytalky-dd/Build/Products/Release-iphoneos/SassyTalkie.app
