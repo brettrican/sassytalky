@@ -84,16 +84,18 @@ jobs:
           path: /tmp/SassyTalkie-simulator.zip
 
       - name: Build for iOS Device (Release) - skipped (requires iOS DeviceSupport)
+        if: false
         run: |
-          # echo "Skipping device build - requires iOS DeviceSupport installation on runner"
-          xcodebuild -project SassyTalkie.xcodeproj \
-             -scheme SassyTalkie \
-             -sdk iphoneos \
-             -configuration Release \
-             -derivedDataPath /tmp/sassytalky-dd \
-             build
+          echo "Skipping device build - requires iOS DeviceSupport installation on runner"
+          # xcodebuild -project SassyTalkie.xcodeproj \
+          #   -scheme SassyTalkie \
+          #   -sdk iphoneos \
+          #   -configuration Release \
+          #   -derivedDataPath /tmp/sassytalky-dd \
+          #   build
 
       - name: Upload device build artifacts
+        if: false
         uses: actions/upload-artifact@v4
         with:
           name: ios-device-build
