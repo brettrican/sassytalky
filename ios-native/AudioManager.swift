@@ -31,9 +31,9 @@ class AudioManager: NSObject {
     private let frameSize: UInt32 = 960 // 20ms at 48kHz
 
     // Accumulate samples to ensure exact frame size for Opus
-    private var inputAccumulator = [Int16]()
+    private var inputAccumulator = [Int16 ]()
     private var outputAccumulator = [Int16]()
-
+    private var accumulatorLock = NSRecursiveLock()
     // MARK: - Initialization
 
     override init() {
@@ -164,6 +164,7 @@ class AudioManager: NSObject {
         let samples = Array(UnsafeBufferPointer(start: channelData[0], count: frameLength))
 
         // Accumulate samples until we have exactly FRAME_SIZE (960)
+        accumulatorLock.lock()
         inputAccumulator.append(contentsOf: samples)
 
         // Process complete frames
@@ -176,6 +177,7 @@ class AudioManager: NSObject {
                 }
             }
         }
+        accumulatorLock.unlock()
     }
 
     func startPlayback() throws {
@@ -214,6 +216,7 @@ class AudioManager: NSObject {
         let count = Int(frameCount)
         
         // Ensure we have enough samples in accumulator
+        accumulatorLock.lock()
         while outputAccumulator.count < count {
             let needed = count - outputAccumulator.count
             var newSamples = [Int16](repeating: 0, count: needed)
@@ -226,14 +229,15 @@ class AudioManager: NSObject {
                 break
             }
         }
-        
+
         // Now we should have enough samples
         let samplesToCopy = min(count, outputAccumulator.count)
         let outputSamples = Array(outputAccumulator.prefix(samplesToCopy))
         outputAccumulator.removeFirst(samplesToCopy)
-        
+        accumulatorLock.unlock()
+
         let ablPointer = UnsafeMutableAudioBufferListPointer(bufferList)
-        
+
         for buffer in ablPointer {
             guard let ptr = buffer.mData else { continue }
             let floats = ptr.assumingMemoryBound(to: Float.self)
@@ -249,9 +253,9 @@ class AudioManager: NSObject {
 
         return noErr
     }
-    
+
     // MARK: - Cleanup
-    
+
     deinit {
         stopRecording()
         stopPlayback()
