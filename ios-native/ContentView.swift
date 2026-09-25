@@ -18,44 +18,40 @@ struct ContentView: View {
             VStack(spacing: 0) {
                 // Header
                 headerView
-                
+
                 Spacer()
-                
+
                 // Status
                 statusView
-                
+
                 Spacer()
-                
+
                 // Channel selector
                 channelSelector
-                
+
                 Spacer()
-                
+
                 // PTT Button
                 pttButton
-                
+
                 Spacer()
             }
             .padding()
             .background(Color.stBgDark.ignoresSafeArea())
             .navigationTitle("SassyTalkie")
             .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .navigationBarLeading) {
-                    // Lock = pairing state. Tap to (re)scan a host's QR. Until
-                    // paired, encryption (mandatory) has no key so no audio flows.
-                    Button(action: { viewModel.showingScanner = true }) {
-                        Image(systemName: viewModel.isPaired ? "lock.fill" : "lock.open")
-                            .foregroundColor(viewModel.isPaired ? .stOnline : .stCoral)
-                    }
+            .navigationBarItems(leading:
+                Button(action: { viewModel.showingScanner = true }) {
+                    Image(systemName: viewModel.isPaired ? "lock.fill" : "lock.open")
+                        .foregroundColor(viewModel.isPaired ? .stOnline : .stCoral)
                 }
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    Button(action: { viewModel.showingSettings.toggle() }) {
-                        Image(systemName: "gear")
-                            .foregroundColor(.stTeal)
-                    }
+            )
+            .navigationBarItems(trailing:
+                Button(action: { viewModel.showingSettings.toggle() }) {
+                    Image(systemName: "gear")
+                        .foregroundColor(.stTeal)
                 }
-            }
+            )
             .sheet(isPresented: $viewModel.showingSettings) {
                 SettingsView(viewModel: viewModel)
             }

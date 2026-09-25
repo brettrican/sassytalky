@@ -29,14 +29,18 @@ class AudioManager: NSObject {
     private let sampleRate: Double = 48000
     private let channelCount: UInt32 = 1
     private let frameSize: UInt32 = 960 // 20ms at 48kHz
-    
+
+    // Accumulate samples to ensure exact frame size for Opus
+    private var inputAccumulator = [Int16]()
+    private var outputAccumulator = [Int16]()
+
     // MARK: - Initialization
-    
+
     override init() {
         self.inputNode = audioEngine.inputNode
         self.outputNode = audioEngine.outputNode
         super.init()
-        
+
         setupAudioSession()
         observeInterruptions()
     }
@@ -140,36 +144,40 @@ class AudioManager: NSObject {
         isRecording = true
         print("🎤 Recording started")
     }
-    
+
     func stopRecording() {
         guard isRecording else { return }
-        
+
         inputNode.removeTap(onBus: 0)
         isRecording = false
-        
+
         if !isPlaying {
             audioEngine.stop()
         }
         print("🎤 Recording stopped")
     }
-    
+
     private func processInputBuffer(_ buffer: AVAudioPCMBuffer) {
         guard let channelData = buffer.int16ChannelData else { return }
-        
+
         let frameLength = Int(buffer.frameLength)
         let samples = Array(UnsafeBufferPointer(start: channelData[0], count: frameLength))
-        
-        // Send to Rust. baseAddress is non-nil whenever samples is non-empty;
-        // the FFI param is _Nonnull, so guard rather than force-unwrap.
-        samples.withUnsafeBufferPointer { pointer in
-            if let base = pointer.baseAddress, samples.count > 0 {
-                _ = sassytalkie_process_audio_input(base, samples.count)
+
+        // Accumulate samples until we have exactly FRAME_SIZE (960)
+        inputAccumulator.append(contentsOf: samples)
+
+        // Process complete frames
+        while inputAccumulator.count >= 960 {
+            let frame = Array(inputAccumulator.prefix(960))
+            inputAccumulator.removeFirst(960)
+            frame.withUnsafeBufferPointer { pointer in
+                if let base = pointer.baseAddress {
+                    _ = sassytalkie_process_audio_input(base, 960)
+                }
             }
         }
     }
-    
-    // MARK: - Playback
-    
+
     func startPlayback() throws {
         guard !isPlaying else { return }
         
@@ -203,21 +211,36 @@ class AudioManager: NSObject {
     }
     
     private func fillOutputBuffer(_ bufferList: UnsafeMutablePointer<AudioBufferList>, frameCount: UInt32) -> OSStatus {
-        let ablPointer = UnsafeMutableAudioBufferListPointer(bufferList)
         let count = Int(frameCount)
-        var int16 = [Int16](repeating: 0, count: count)
-        let written = int16.withUnsafeMutableBufferPointer { buf -> Int in
-            guard let base = buf.baseAddress else { return 0 }
-            return Int(sassytalkie_get_audio_output(base, count))
+        
+        // Ensure we have enough samples in accumulator
+        while outputAccumulator.count < count {
+            let needed = count - outputAccumulator.count
+            var newSamples = [Int16](repeating: 0, count: needed)
+            let written = sassytalkie_get_audio_output(&newSamples, needed)
+            if written > 0 {
+                outputAccumulator.append(contentsOf: newSamples.prefix(written))
+            } else {
+                // No more audio available, pad with silence
+                outputAccumulator.append(contentsOf: [Int16](repeating: 0, count: needed))
+                break
+            }
         }
-
+        
+        // Now we should have enough samples
+        let samplesToCopy = min(count, outputAccumulator.count)
+        let outputSamples = Array(outputAccumulator.prefix(samplesToCopy))
+        outputAccumulator.removeFirst(samplesToCopy)
+        
+        let ablPointer = UnsafeMutableAudioBufferListPointer(bufferList)
+        
         for buffer in ablPointer {
             guard let ptr = buffer.mData else { continue }
             let floats = ptr.assumingMemoryBound(to: Float.self)
-            let n = min(count, Int(buffer.mDataByteSize) / MemoryLayout<Float>.size)
+            let n = min(samplesToCopy, Int(buffer.mDataByteSize) / MemoryLayout<Float>.size)
             for i in 0..<n {
-                if i < written {
-                    floats[i] = Float(int16[i]) / 32768.0
+                if i < samplesToCopy {
+                    floats[i] = Float(outputSamples[i]) / 32768.0
                 } else {
                     floats[i] = 0
                 }

@@ -21,7 +21,10 @@ struct SassyTalkieApp: App {
     
     var body: some Scene {
         WindowGroup {
-            ContentView()
+            ZStack {
+                Color.stBgDark.ignoresSafeArea()
+                ContentView()
+            }
         }
     }
     
